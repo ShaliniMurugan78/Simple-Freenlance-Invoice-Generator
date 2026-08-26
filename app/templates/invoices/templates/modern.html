@@ -1,0 +1,123 @@
+<!-- Modern Invoice Template -->
+<div class="invoice-sheet" style="background: #FFF; border: 1px solid #E2E8F0; border-radius: var(--radius-lg); overflow: hidden; max-width: 850px; margin: 0 auto; box-shadow: var(--shadow-sm); font-family: var(--font-sans);">
+  
+  <!-- Modern Header Banner -->
+  <div style="background-color: #0F172A; color: #FFFFFF; padding: 32px 40px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      {% if invoice.profile.logo_path %}
+        <img src="/static/{{ invoice.profile.logo_path }}" alt="Logo" style="max-height: 42px; margin-bottom: 8px; display: block; filter: brightness(0) invert(1);">
+      {% endif %}
+      <h1 style="font-size: 22px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.01em;">{{ invoice.profile.business_name or invoice.profile.full_name }}</h1>
+      <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">{{ invoice.profile.email }} | {{ invoice.profile.phone }}</div>
+    </div>
+
+    <div style="text-align: right;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #94A3B8; font-weight: 600;">INVOICE NUMBER</div>
+      <div style="font-size: 20px; font-family: var(--font-mono); font-weight: 700; color: #38BDF8; margin-top: 2px;">{{ invoice.invoice_number }}</div>
+      <div style="margin-top: 6px;">
+        <span class="status-badge {{ invoice.status.lower() }}" style="border: 1px solid rgba(255,255,255,0.2);">{{ invoice.status }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding: 36px 40px;">
+    <!-- Meta Info Cards -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 32px; border-bottom: 1px solid #F1F5F9; padding-bottom: 24px;">
+      <div>
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94A3B8; margin-bottom: 4px;">Client</div>
+        <div style="font-size: 14px; font-weight: 700; color: #1E293B;">{{ invoice.client_name }}</div>
+        {% if invoice.client_company %}<div style="font-size: 12px; color: #475569;">{{ invoice.client_company }}</div>{% endif %}
+        <div style="font-size: 12px; color: #64748B; margin-top: 2px;">{{ invoice.client_email }}</div>
+      </div>
+
+      <div>
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94A3B8; margin-bottom: 4px;">Dates</div>
+        <div style="font-size: 12px; color: #475569;"><strong>Issued:</strong> {{ invoice.invoice_date }}</div>
+        <div style="font-size: 12px; color: #475569; margin-top: 2px;"><strong>Due:</strong> {{ invoice.due_date }}</div>
+        {% if invoice.paid_date %}<div style="font-size: 12px; color: #047857; margin-top: 2px;"><strong>Paid:</strong> {{ invoice.paid_date }}</div>{% endif %}
+      </div>
+
+      <div>
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94A3B8; margin-bottom: 4px;">Issuer Tax / GST</div>
+        <div style="font-size: 12px; color: #475569;">{{ invoice.profile.tax_number or 'N/A' }}</div>
+        <div style="font-size: 12px; color: #64748B; margin-top: 2px;">Currency: <strong>{{ invoice.currency }}</strong></div>
+      </div>
+    </div>
+
+    <!-- Modern Items Table -->
+    <table class="invoice-items-table" style="width: 100%; border-collapse: collapse; margin-bottom: 28px;">
+      <thead>
+        <tr style="border-bottom: 2px solid #E2E8F0;">
+          <th style="padding: 10px 0; text-align: left; font-size: 11px; text-transform: uppercase; color: #64748B; font-weight: 700;">Item / Service</th>
+          <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase; color: #64748B; font-weight: 700;">Hours</th>
+          <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase; color: #64748B; font-weight: 700;">Rate</th>
+          <th style="padding: 10px 0; text-align: right; font-size: 11px; text-transform: uppercase; color: #64748B; font-weight: 700;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.line_items %}
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 14px 0; font-size: 13px; font-weight: 500; color: #1E293B;">
+              {{ item.description }}
+            </td>
+            <td style="padding: 14px 12px; font-size: 13px; text-align: right; color: #475569;">{{ item.hours }}</td>
+            <td style="padding: 14px 12px; font-size: 13px; text-align: right; color: #475569;">{{ format_currency(item.hourly_rate, invoice.currency) }}</td>
+            <td style="padding: 14px 0; font-size: 13px; text-align: right; font-weight: 600; color: #0F172A;">{{ format_currency(item.amount, invoice.currency) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Modern Summary & QR Footer -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;">
+      <div style="display: flex; align-items: center; gap: 14px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: var(--radius-md); max-width: 380px;">
+        <div class="invoice-qr-box" style="flex-shrink: 0; background: #FFF; padding: 3px; border: 1px solid #CBD5E1; border-radius: var(--radius-sm);">
+          <img src="{{ payment_qr_data or qr_code_data }}" alt="Scan to Pay QR" style="width: 80px; height: 80px; display: block;">
+        </div>
+        <div style="font-size: 11px; color: #64748B; line-height: 1.35;">
+          {% if invoice.status == 'Paid' %}
+            <strong style="color: #047857;">✓ SETTLED & PAID</strong><br>
+            Paid on {{ invoice.paid_date or 'Record' }}
+          {% else %}
+            <strong style="color: #0F172A; text-transform: uppercase;">Scan to Pay via UPI</strong><br>
+            <span style="color: #4B5563;">GPay / PhonePe / Paytm</span><br>
+            VPA: <strong style="color: #0F172A; font-family: var(--font-mono);">{{ invoice.profile.upi_id or upi_id or 'yourname@upi' }}</strong>
+          {% endif %}
+          <div style="margin-top: 3px; font-size: 10px; color: #94A3B8;">
+            <a href="{{ url_for('verification.verify_invoice', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}" target="_blank" style="color: #2563EB;">Verify Online</a>
+          </div>
+        </div>
+      </div>
+
+      <div style="width: 260px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #64748B; margin-bottom: 4px;">
+          <span>Subtotal</span>
+          <span style="font-weight: 600; color: #1E293B;">{{ format_currency(invoice.subtotal, invoice.currency) }}</span>
+        </div>
+        {% if invoice.discount_amount > 0 %}
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #047857; margin-bottom: 4px;">
+            <span>Discount ({{ invoice.discount_percent }}%)</span>
+            <span>-{{ format_currency(invoice.discount_amount, invoice.currency) }}</span>
+          </div>
+        {% endif %}
+        {% if invoice.tax_amount > 0 %}
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #64748B; margin-bottom: 4px;">
+            <span>Tax ({{ invoice.tax_percent }}%)</span>
+            <span>+{{ format_currency(invoice.tax_amount, invoice.currency) }}</span>
+          </div>
+        {% endif %}
+        <div style="display: flex; justify-content: space-between; border-top: 2px solid #0F172A; padding-top: 8px; margin-top: 6px; font-size: 17px; font-weight: 800; color: #0F172A;">
+          <span>Amount Due</span>
+          <span>{{ format_currency(invoice.total, invoice.currency) }}</span>
+        </div>
+      </div>
+    </div>
+
+    {% if invoice.payment_terms or invoice.notes %}
+      <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #F1F5F9; font-size: 12px; color: #64748B;">
+        {% if invoice.payment_terms %}<div><strong>Terms:</strong> {{ invoice.payment_terms }}</div>{% endif %}
+        {% if invoice.notes %}<div style="margin-top: 4px;"><strong>Notes:</strong> {{ invoice.notes }}</div>{% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>

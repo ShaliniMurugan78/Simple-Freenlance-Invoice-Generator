@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Verification & Payment - {{ invoice.invoice_number }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    body {
+      background-color: #0F172A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      margin: 0;
+    }
+    .verify-card {
+      background-color: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+      max-width: 520px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .verify-header {
+      background-color: #0F172A;
+      color: #FFFFFF;
+      padding: 24px;
+      text-align: center;
+    }
+    .verify-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: rgba(5, 150, 105, 0.2);
+      border: 1px solid #059669;
+      color: #34D399;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .verify-body {
+      padding: 24px 28px;
+    }
+    .verify-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #F1F5F9;
+      font-size: 13px;
+    }
+    .verify-row:last-child {
+      border-bottom: none;
+    }
+    .verify-label {
+      color: #64748B;
+      font-weight: 500;
+    }
+    .verify-val {
+      font-weight: 600;
+      color: #0F172A;
+      text-align: right;
+    }
+    .hash-box {
+      background-color: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: #64748B;
+      word-break: break-all;
+      margin-top: 14px;
+    }
+    .upi-pay-card {
+      background-color: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-top: 16px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="verify-card">
+    <div class="verify-header">
+      <div class="verify-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>AUTHENTIC INVOICE RECORD</span>
+      </div>
+      <h1 style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.01em; margin-bottom: 2px;">Invoice Verification</h1>
+      <div style="font-size: 14px; font-family: var(--font-mono); color: #38BDF8;">{{ invoice.invoice_number }}</div>
+    </div>
+
+    <div class="verify-body">
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-alert {{ category }}" style="margin-bottom: 14px;">
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="verify-row">
+        <span class="verify-label">Issuing Business</span>
+        <span class="verify-val">{{ invoice.business_name or invoice.issuer_name }}</span>
+      </div>
+
+      <div class="verify-row">
+        <span class="verify-label">Client</span>
+        <span class="verify-val">{{ invoice.client_name }}{% if invoice.client_company %} ({{ invoice.client_company }}){% endif %}</span>
+      </div>
+
+      <div class="verify-row">
+        <span class="verify-label">Total Amount</span>
+        <span class="verify-val" style="font-size: 16px; color: #0F172A;">{{ format_currency(invoice.total, invoice.currency) }}</span>
+      </div>
+
+      <div class="verify-row">
+        <span class="verify-label">Issue Date</span>
+        <span class="verify-val">{{ invoice.invoice_date }}</span>
+      </div>
+
+      <div class="verify-row">
+        <span class="verify-label">Due Date</span>
+        <span class="verify-val">{{ invoice.due_date }}</span>
+      </div>
+
+      <div class="verify-row">
+        <span class="verify-label">Current Status</span>
+        <span class="verify-val">
+          <span class="status-badge {{ invoice.status.lower() }}">{{ invoice.status }}</span>
+        </span>
+      </div>
+
+      {% if invoice.paid_date %}
+        <div class="verify-row">
+          <span class="verify-label">Settlement Date</span>
+          <span class="verify-val" style="color: #059669;">{{ invoice.paid_date }} (Paid)</span>
+        </div>
+      {% endif %}
+
+      <!-- Direct UPI Payment & Auto-Settlement Section -->
+      {% if invoice.status != 'Paid' and payment_qr_data %}
+        <div class="upi-pay-card" id="upiPaySection">
+          <div style="font-size: 12px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
+            Scan to Pay via UPI (GPay / PhonePe / Paytm)
+          </div>
+
+          <div style="display: flex; justify-content: center; margin: 8px 0;">
+            <img src="{{ payment_qr_data }}" alt="UPI QR Code" style="width: 130px; height: 130px; border-radius: var(--radius-sm); border: 1px solid #86EFAC;">
+          </div>
+
+          <!-- Waiting State (shown after user taps Pay) -->
+          <div id="waitingState" style="display:none; background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:10px; margin:8px 0; text-align:center;">
+            <div style="font-size:20px; margin-bottom:4px;">⏳</div>
+            <div style="font-size:12px; font-weight:600; color:#92400E;">Waiting for payment confirmation...</div>
+            <div style="font-size:11px; color:#B45309; margin-top:2px;">Complete payment in your UPI app and return here</div>
+            <div style="margin-top:8px;">
+              <div style="width:100%; background:#FED7AA; border-radius:4px; height:4px; overflow:hidden;">
+                <div id="progressBar" style="height:100%; width:0%; background:#F59E0B; border-radius:4px; transition:width 0.5s linear;"></div>
+              </div>
+            </div>
+          </div>
+
+          {% if upi_uri %}
+            <div style="margin-bottom: 8px;">
+              <a href="{{ upi_uri }}" id="upiPayBtn" class="btn btn-sm"
+                 style="background-color:#059669; color:#FFFFFF; font-weight:600; width:100%; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><path d="M9 12L11 14L15 10"/></svg>
+                Tap to Pay via UPI App — Auto-Detects When Done
+              </a>
+            </div>
+          {% endif %}
+
+          <div style="font-size:10px; color:#6B7280; text-align:center;">
+            🔄 Payment is automatically confirmed when you return from your UPI app
+          </div>
+        </div>
+
+        <!-- Hidden auto-confirm form -->
+        <form id="autoConfirmForm"
+              action="{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}"
+              method="POST" style="display:none;">
+          <input type="hidden" name="utr_number" id="hiddenUtr" value="AUTO_DETECT">
+        </form>
+
+      {% elif invoice.status == 'Paid' %}
+        <div id="paidBanner" style="background-color:#ECFDF5; border:1px solid #A7F3D0; border-radius:var(--radius-md); padding:14px; margin-top:16px; text-align:center; color:#065F46; font-weight:600; font-size:13px;">
+          ✓ This invoice is officially SETTLED & PAID in full.
+        </div>
+      {% endif %}
+
+      <div class="hash-box">
+        <div style="font-weight: 700; color: #334155; margin-bottom: 2px;">
+          {% if is_tamper_free %}
+            <span style="color: #059669;">✓ SHA-256 Cryptographic Checksum</span>
+          {% else %}
+            <span>SHA-256 Checksum</span>
+          {% endif %}
+        </div>
+        <div>{{ invoice.document_hash }}</div>
+      </div>
+
+      <div style="text-align: center; margin-top: 16px; font-size: 11px; color: #94A3B8;">
+        Smart Freelance Invoice Platform • Verified Document Record
+      </div>
+    </div>
+  </div>
+
+{% if invoice.status != 'Paid' and upi_uri %}
+<script>
+  const CONFIRM_URL = "{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}";
+  const upiBtn = document.getElementById('upiPayBtn');
+  const waitingState = document.getElementById('waitingState');
+  const progressBar = document.getElementById('progressBar');
+  let upiClicked = false;
+  let pollInterval = null;
+  let progressVal = 0;
+
+  // When client taps "Pay via UPI App"
+  upiBtn.addEventListener('click', function() {
+    upiClicked = true;
+    waitingState.style.display = 'block';
+    upiBtn.style.opacity = '0.6';
+    upiBtn.style.pointerEvents = 'none';
+
+    // Animate the progress bar while waiting
+    progressVal = 0;
+    const progressTimer = setInterval(function() {
+      progressVal = Math.min(progressVal + 1, 90); // Fills to 90% while waiting
+      progressBar.style.width = progressVal + '%';
+    }, 300);
+
+    // Start polling the server every 3 seconds to check if paid
+    pollInterval = setInterval(function() {
+      fetch(CONFIRM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'utr_number=AUTO_DETECT'
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          clearInterval(pollInterval);
+          clearInterval(progressTimer);
+          progressBar.style.width = '100%';
+          progressBar.style.background = '#059669';
+          showPaidSuccess(data.paid_date);
+        }
+      })
+      .catch(function() {});
+    }, 3000);
+  });
+
+  // Also detect when user returns from UPI app via visibilitychange (tab/app switch)
+  document.addEventListener('visibilitychange', function() {
+    if (!upiClicked) return;
+    if (document.visibilityState === 'visible') {
+      // User returned to browser after UPI app — auto-submit confirmation
+      if (pollInterval) clearInterval(pollInterval);
+      progressBar.style.width = '100%';
+      progressBar.style.background = '#059669';
+
+      fetch(CONFIRM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'utr_number=AUTO_DETECT_RETURN'
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showPaidSuccess(data.paid_date);
+        }
+      })
+      .catch(function() {});
+    }
+  });
+
+  function showPaidSuccess(paidDate) {
+    const upiSection = document.getElementById('upiPaySection');
+    upiSection.innerHTML = `
+      <div style="text-align:center; padding:10px 0;">
+        <div style="font-size:36px; margin-bottom:8px;">✅</div>
+        <div style="font-size:15px; font-weight:700; color:#065F46; margin-bottom:4px;">Payment Confirmed!</div>
+        <div style="font-size:12px; color:#047857;">Invoice marked as <strong>PAID</strong> on ${paidDate}</div>
+        <div style="margin-top:10px; font-size:11px; color:#6B7280;">Your payment has been automatically recorded. Thank you!</div>
+      </div>
+    `;
+    upiSection.style.background = '#ECFDF5';
+    upiSection.style.border = '1px solid #A7F3D0';
+  }
+</script>
+{% endif %}
+
+</body>
+</html>
+

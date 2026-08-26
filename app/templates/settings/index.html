@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block page_title %}Settings & Profile{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">Configure business details, invoice defaults, database backup & branding</span>
+{% endblock %}
+
+{% block top_actions %}
+  <button type="submit" form="profileForm" class="btn btn-primary">Save Changes</button>
+{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+  <!-- Main Settings Form -->
+  <div>
+    <form id="profileForm" method="POST" action="{{ url_for('settings.index') }}" enctype="multipart/form-data">
+      
+      <!-- Freelancer / Business Identity -->
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Business Information</h2>
+        </div>
+        <div class="section-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="fullName">Full Name *</label>
+              <input type="text" id="fullName" name="full_name" class="form-control" value="{{ profile.full_name }}" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="businessName">Business / Brand Name *</label>
+              <input type="text" id="businessName" name="business_name" class="form-control" value="{{ profile.business_name }}" required>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="email">Business Email *</label>
+              <input type="email" id="email" name="email" class="form-control" value="{{ profile.email }}" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="phone">Phone Number</label>
+              <input type="text" id="phone" name="phone" class="form-control" value="{{ profile.phone }}">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="taxNumber">Tax / GST Number</label>
+              <input type="text" id="taxNumber" name="tax_number" class="form-control" placeholder="e.g. GSTIN29ABCDE1234F1Z5" value="{{ profile.tax_number }}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="upiId">UPI ID / VPA (for Direct Payment QR Code)</label>
+              <input type="text" id="upiId" name="upi_id" class="form-control" placeholder="e.g. alexmorgan@okhdfcbank or business@upi" value="{{ profile.upi_id or '' }}">
+              <div class="form-help">Pre-fills payment when clients scan your invoice QR with GPay / PhonePe / Paytm</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="address">Business Address</label>
+            <textarea id="address" name="address" class="form-control" rows="2">{{ profile.address }}</textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Branding & Logo -->
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Business Logo</h2>
+        </div>
+        <div class="section-body">
+          <div style="display: flex; gap: 20px; align-items: center;">
+            <div style="width: 80px; height: 80px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: #FFF; overflow: hidden;">
+              {% if profile.logo_path %}
+                <img src="/static/{{ profile.logo_path }}" alt="Logo Preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+              {% else %}
+                <span style="font-size: 11px; color: var(--text-muted);">No Logo</span>
+              {% endif %}
+            </div>
+
+            <div style="flex: 1;">
+              <input type="file" name="logo_file" class="form-control" accept="image/png, image/jpeg, image/jpg, image/webp">
+              <div class="form-help">Upload PNG, JPG, JPEG, or WEBP (Max 16MB). Replaces existing logo.</div>
+              {% if profile.logo_path %}
+                <div style="margin-top: 6px;">
+                  <label style="font-size: 12px; color: #DC2626; cursor: pointer;">
+                    <input type="checkbox" name="remove_logo" value="1"> Remove current logo
+                  </label>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Invoice Defaults -->
+      <section class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">Billing & Invoice Defaults</h2>
+        </div>
+        <div class="section-body">
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label class="form-label" for="defaultCurrency">Default Currency</label>
+              <select id="defaultCurrency" name="default_currency" class="form-control">
+                {% for code, info in currencies.items() %}
+                  <option value="{{ code }}" {% if profile.default_currency == code %}selected{% endif %}>
+                    {{ code }} ({{ info.symbol }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="defaultTaxPercent">Default Tax / GST (%)</label>
+              <input type="number" id="defaultTaxPercent" name="default_tax_percent" class="form-control numeric-cell" step="0.5" min="0" max="100" value="{{ profile.default_tax_percent }}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="defaultTemplate">Default Template</label>
+              <select id="defaultTemplate" name="default_template" class="form-control">
+                {% for tmpl in templates %}
+                  <option value="{{ tmpl }}" {% if profile.default_template == tmpl %}selected{% endif %}>
+                    {{ tmpl|capitalize }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="defaultPaymentTerms">Default Payment Terms</label>
+            <input type="text" id="defaultPaymentTerms" name="default_payment_terms" class="form-control" value="{{ profile.default_payment_terms }}">
+          </div>
+        </div>
+      </section>
+
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
+        <button type="submit" class="btn btn-primary">Save Profile Settings</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Sidebar: Recent Activity Audit Feed -->
+  <div>
+    <!-- Activity Log Card -->
+    <section class="content-section">
+      <div class="section-header">
+        <h2 class="section-title">Recent Activity</h2>
+      </div>
+      <div class="section-body" style="padding: 12px 16px;">
+        {% if activity_logs %}
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            {% for log in activity_logs %}
+              <div style="font-size: 12px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+                <div style="color: var(--text-primary); font-weight: 500;">{{ log.description }}</div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">{{ log.created_at }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 12px;">No activity logs recorded yet.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

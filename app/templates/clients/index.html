@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block page_title %}Clients{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">Directory of freelance clients, companies & accounts</span>
+{% endblock %}
+
+{% block top_actions %}
+  <a href="{{ url_for('clients.create') }}" class="btn btn-primary">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    <span>Add Client</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="toolbar-bar">
+  <form method="GET" action="{{ url_for('clients.index') }}" style="display: flex; gap: 8px;">
+    <div class="search-input-wrapper">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" name="search" class="form-control" placeholder="Search client name, company, email..." value="{{ search }}">
+    </div>
+    {% if search %}
+      <a href="{{ url_for('clients.index') }}" class="btn btn-sm" style="align-self: center;">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="content-section">
+  {% if clients %}
+    <div class="table-container">
+      <table class="app-table">
+        <thead>
+          <tr>
+            <th>Client Name</th>
+            <th>Company</th>
+            <th>Email / Phone</th>
+            <th class="numeric-cell">Total Billed</th>
+            <th class="numeric-cell">Total Paid</th>
+            <th class="numeric-cell">Outstanding</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in clients %}
+            <tr>
+              <td>
+                <a href="{{ url_for('clients.view', client_id=c.id) }}" style="font-weight: 600; color: var(--text-primary);">
+                  {{ c.name }}
+                </a>
+              </td>
+              <td>
+                {{ c.company_name or '-' }}
+              </td>
+              <td style="font-size: 12px; color: var(--text-secondary);">
+                <div>{{ c.email }}</div>
+                {% if c.phone %}<div style="color: var(--text-muted);">{{ c.phone }}</div>{% endif %}
+              </td>
+              <td class="numeric-cell" style="font-weight: 500;">
+                {{ format_currency(c.total_billed) }}
+              </td>
+              <td class="numeric-cell" style="color: #047857; font-weight: 600;">
+                {{ format_currency(c.total_paid) }}
+              </td>
+              <td class="numeric-cell" style="{% if c.total_outstanding > 0 %}color: #DC2626; font-weight: 600;{% else %}color: var(--text-muted);{% endif %}">
+                {{ format_currency(c.total_outstanding) }}
+              </td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 4px;">
+                  <a href="{{ url_for('invoices.create', client_id=c.id) }}" class="btn btn-sm" title="New invoice for client">
+                    + Invoice
+                  </a>
+                  <a href="{{ url_for('clients.view', client_id=c.id) }}" class="btn btn-sm">
+                    Ledger
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-title">No clients found</div>
+      <p class="empty-state-text">
+        {% if search %}
+          No clients matched your search query.
+        {% else %}
+          Add your first client to start creating professional invoices.
+        {% endif %}
+      </p>
+      {% if search %}
+        <a href="{{ url_for('clients.index') }}" class="btn btn-sm">Clear Search</a>
+      {% else %}
+        <a href="{{ url_for('clients.create') }}" class="btn btn-primary btn-sm">Add Client</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

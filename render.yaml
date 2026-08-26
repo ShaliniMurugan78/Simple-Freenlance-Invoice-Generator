@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: freelance-invoice-generator
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn run:app --workers 2 --bind 0.0.0.0:$PORT --timeout 120"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AI_PROVIDER
+        value: groq
+      - key: AI_MODEL
+        value: groq/compound-mini

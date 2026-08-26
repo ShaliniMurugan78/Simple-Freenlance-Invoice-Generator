@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ client.name }}{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">{{ client.company_name or 'Client Account & Billing Ledger' }}</span>
+{% endblock %}
+
+{% block top_actions %}
+  <a href="{{ url_for('clients.index') }}" class="btn">Back to Clients</a>
+  <a href="{{ url_for('invoices.create', client_id=client.id) }}" class="btn btn-primary">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    <span>+ Create Invoice</span>
+  </a>
+  <a href="{{ url_for('clients.edit', client_id=client.id) }}" class="btn">Edit Client</a>
+  <form action="{{ url_for('clients.delete', client_id=client.id) }}" method="POST" style="display: inline;" data-confirm="Are you sure you want to delete client '{{ client.name }}'?">
+    <button type="submit" class="btn btn-danger">Delete</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<!-- Client Financial Ledger Summary -->
+<div class="metrics-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Invoiced</div>
+    <div class="stat-value">{{ format_currency(stats.total_billed) }}</div>
+  </div>
+
+  <div class="stat-card highlight">
+    <div class="stat-label">Settled Revenue</div>
+    <div class="stat-value" style="color: #047857;">{{ format_currency(stats.total_paid) }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Outstanding Balance</div>
+    <div class="stat-value" style="{% if stats.outstanding > 0 %}color: #DC2626;{% else %}color: var(--text-muted);{% endif %}">
+      {{ format_currency(stats.outstanding) }}
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Payment Behavior</div>
+    <div style="font-size: 13px; font-weight: 600; margin-top: 4px; {% if stats.behavior_status == 'warning' %}color: #DC2626;{% elif stats.behavior_status == 'success' %}color: #047857;{% else %}color: var(--text-primary);{% endif %}">
+      {{ stats.payment_behavior }}
+    </div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+  <!-- Client Information Card -->
+  <section class="content-section">
+    <div class="section-header">
+      <h2 class="section-title">Client Details</h2>
+    </div>
+    <div class="section-body" style="font-size: 13px;">
+      <div style="margin-bottom: 12px;">
+        <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600; display: block;">Primary Contact</span>
+        <strong style="font-size: 15px; color: var(--text-primary);">{{ client.name }}</strong>
+        {% if client.company_name %}<div style="color: var(--text-secondary);">{{ client.company_name }}</div>{% endif %}
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600; display: block;">Email</span>
+        <a href="mailto:{{ client.email }}" style="color: var(--brand-accent);">{{ client.email }}</a>
+      </div>
+
+      {% if client.phone %}
+        <div style="margin-bottom: 12px;">
+          <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600; display: block;">Phone</span>
+          <span>{{ client.phone }}</span>
+        </div>
+      {% endif %}
+
+      {% if client.tax_number %}
+        <div style="margin-bottom: 12px;">
+          <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600; display: block;">Tax / GST Number</span>
+          <span style="font-family: var(--font-mono); font-weight: 500;">{{ client.tax_number }}</span>
+        </div>
+      {% endif %}
+
+      {% if client.address %}
+        <div style="margin-bottom: 12px;">
+          <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600; display: block;">Billing Address</span>
+          <div style="color: var(--text-secondary); line-height: 1.4;">{{ client.address }}</div>
+        </div>
+      {% endif %}
+
+      {% if client.notes %}
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 12px;">
+          <strong>Notes:</strong> {{ client.notes }}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Client Invoice History Table -->
+  <section class="content-section">
+    <div class="section-header">
+      <h2 class="section-title">Invoice History ({{ stats.invoice_count }})</h2>
+      <a href="{{ url_for('invoices.create', client_id=client.id) }}" class="btn btn-sm">+ New Invoice</a>
+    </div>
+    {% if invoices %}
+      <div class="table-container">
+        <table class="app-table">
+          <thead>
+            <tr>
+              <th>Invoice</th>
+              <th>Date</th>
+              <th>Due Date</th>
+              <th class="numeric-cell">Amount</th>
+              <th>Status</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in invoices %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('invoices.view', invoice_id=inv.id) }}" style="font-weight: 600; font-family: var(--font-mono);">
+                    {{ inv.invoice_number }}
+                  </a>
+                </td>
+                <td style="font-size: 12px; color: var(--text-muted);">{{ inv.invoice_date }}</td>
+                <td style="font-size: 12px;">
+                  <span {% if inv.status == 'Overdue' %}style="color: #DC2626; font-weight: 600;"{% endif %}>{{ inv.due_date }}</span>
+                </td>
+                <td class="numeric-cell" style="font-weight: 600;">
+                  {{ format_currency(inv.total, inv.currency) }}
+                </td>
+                <td>
+                  <span class="status-badge {{ inv.status.lower() }}">{{ inv.status }}</span>
+                </td>
+                <td style="text-align: right;">
+                  <a href="{{ url_for('invoices.view', invoice_id=inv.id) }}" class="btn btn-sm">View</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state-title">No invoices issued to this client yet</div>
+        <p class="empty-state-text">Create an invoice to bill this client for completed milestones or hourly work.</p>
+        <a href="{{ url_for('invoices.create', client_id=client.id) }}" class="btn btn-primary btn-sm">Create Invoice</a>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

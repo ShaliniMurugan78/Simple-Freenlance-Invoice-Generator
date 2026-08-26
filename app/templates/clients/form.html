@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ 'Add New Client' if mode == 'create' else 'Edit Client ' + client.name }}{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">Manage client billing contacts, address & tax identification</span>
+{% endblock %}
+
+{% block top_actions %}
+  <a href="{{ url_for('clients.index') }}" class="btn">Cancel</a>
+  <button type="submit" form="clientForm" class="btn btn-primary">
+    {{ 'Save Client' if mode == 'create' else 'Update Client' }}
+  </button>
+{% endblock %}
+
+{% block content %}
+<form id="clientForm" method="POST" action="{{ url_for('clients.create') if mode == 'create' else url_for('clients.edit', client_id=client.id) }}">
+  <div class="content-section" style="max-width: 750px;">
+    <div class="section-header">
+      <h2 class="section-title">Client Information</h2>
+    </div>
+    <div class="section-body">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="clientName">Contact / Client Name *</label>
+          <input type="text" id="clientName" name="name" class="form-control" placeholder="e.g. John Miller" value="{{ client.name if mode == 'edit' else '' }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="companyName">Company / Organization Name</label>
+          <input type="text" id="companyName" name="company_name" class="form-control" placeholder="e.g. Pixel Studio Design Ltd" value="{{ client.company_name if mode == 'edit' else '' }}">
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="clientEmail">Email Address *</label>
+          <input type="email" id="clientEmail" name="email" class="form-control" placeholder="billing@client.com" value="{{ client.email if mode == 'edit' else '' }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="clientPhone">Phone Number</label>
+          <input type="text" id="clientPhone" name="phone" class="form-control" placeholder="+91 98765 43210" value="{{ client.phone if mode == 'edit' else '' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="clientTax">Tax / GST / VAT Number</label>
+        <input type="text" id="clientTax" name="tax_number" class="form-control" placeholder="e.g. GSTIN29AABCA1122D1Z1" value="{{ client.tax_number if mode == 'edit' else '' }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="clientAddress">Billing Address</label>
+        <textarea id="clientAddress" name="address" class="form-control" rows="3" placeholder="Street address, City, State, Postal Code">{{ client.address if mode == 'edit' else '' }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="clientNotes">Internal Notes</label>
+        <input type="text" id="clientNotes" name="notes" class="form-control" placeholder="e.g. Key contact for enterprise design contract" value="{{ client.notes if mode == 'edit' else '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 12px; margin-top: 20px;">
+    <a href="{{ url_for('clients.index') }}" class="btn">Cancel</a>
+    <button type="submit" class="btn btn-primary">
+      {{ 'Save Client' if mode == 'create' else 'Update Client' }}
+    </button>
+  </div>
+</form>
+{% endblock %}

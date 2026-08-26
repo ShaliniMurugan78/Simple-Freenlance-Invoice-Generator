@@ -1,0 +1,102 @@
+<!-- Minimal Invoice Template -->
+<div class="invoice-sheet" style="background: #FFF; border: 1px solid #E5E7EB; border-radius: var(--radius-sm); padding: 48px; max-width: 850px; margin: 0 auto; box-shadow: var(--shadow-xs); font-family: var(--font-sans);">
+  
+  <!-- Minimal Top Line -->
+  <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 40px;">
+    <div>
+      {% if invoice.profile.logo_path %}
+        <img src="/static/{{ invoice.profile.logo_path }}" alt="Logo" style="max-height: 36px; margin-bottom: 8px; display: block;">
+      {% endif %}
+      <div style="font-size: 16px; font-weight: 700; color: #111827;">{{ invoice.profile.business_name or invoice.profile.full_name }}</div>
+      <div style="font-size: 12px; color: #6B7280;">{{ invoice.profile.email }}</div>
+    </div>
+
+    <div style="text-align: right;">
+      <div style="font-size: 20px; font-weight: 700; font-family: var(--font-mono); color: #111827;">{{ invoice.invoice_number }}</div>
+      <div style="font-size: 12px; color: #6B7280; margin-top: 2px;">Date: {{ invoice.invoice_date }} | Due: {{ invoice.due_date }}</div>
+      <div style="margin-top: 4px;">
+        <span class="status-badge {{ invoice.status.lower() }}" style="font-size: 10px;">{{ invoice.status }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Minimal Client Block -->
+  <div style="margin-bottom: 36px;">
+    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #9CA3AF; font-weight: 600; margin-bottom: 4px;">Invoiced To</div>
+    <div style="font-size: 14px; font-weight: 600; color: #111827;">{{ invoice.client_name }}</div>
+    {% if invoice.client_company %}<div style="font-size: 12px; color: #4B5563;">{{ invoice.client_company }}</div>{% endif %}
+    <div style="font-size: 12px; color: #6B7280;">{{ invoice.client_email }}</div>
+  </div>
+
+  <!-- Minimal Items Table -->
+  <table class="invoice-items-table" style="width: 100%; border-collapse: collapse; margin-bottom: 32px;">
+    <thead>
+      <tr style="border-bottom: 1px solid #111827;">
+        <th style="padding: 8px 0; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #111827; font-weight: 700;">Description</th>
+        <th style="padding: 8px 12px; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #111827; font-weight: 700;">Hours</th>
+        <th style="padding: 8px 12px; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #111827; font-weight: 700;">Rate</th>
+        <th style="padding: 8px 0; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #111827; font-weight: 700;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in invoice.line_items %}
+        <tr style="border-bottom: 1px solid #F3F4F6;">
+          <td style="padding: 12px 0; font-size: 13px; color: #1F2937;">{{ item.description }}</td>
+          <td style="padding: 12px 12px; font-size: 13px; text-align: right; color: #6B7280;">{{ item.hours }}</td>
+          <td style="padding: 12px 12px; font-size: 13px; text-align: right; color: #6B7280;">{{ format_currency(item.hourly_rate, invoice.currency) }}</td>
+          <td style="padding: 12px 0; font-size: 13px; text-align: right; font-weight: 600; color: #111827;">{{ format_currency(item.amount, invoice.currency) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Minimal Summary & QR Code -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div class="invoice-qr-box" style="background: #FFF; padding: 2px; border: 1px solid #E5E7EB;">
+        <img src="{{ payment_qr_data or qr_code_data }}" alt="UPI Pay QR" style="width: 70px; height: 70px; display: block;">
+      </div>
+      <div style="font-size: 10px; color: #6B7280; line-height: 1.35;">
+        {% if invoice.status == 'Paid' %}
+          <strong style="color: #047857;">✓ PAID IN FULL</strong>
+        {% else %}
+          <strong style="color: #111827;">Scan to Pay (UPI)</strong><br>
+          {{ invoice.profile.upi_id or upi_id or 'yourname@upi' }}
+        {% endif %}
+        <div style="margin-top: 2px;">
+          <a href="{{ url_for('verification.verify_invoice', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}" target="_blank" style="color: #6B7280; text-decoration: underline;">Verify online</a>
+        </div>
+      </div>
+    </div>
+
+    <div style="width: 240px;">
+      <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
+        <span>Subtotal</span>
+        <span>{{ format_currency(invoice.subtotal, invoice.currency) }}</span>
+      </div>
+      {% if invoice.discount_amount > 0 %}
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #047857; margin-bottom: 4px;">
+          <span>Discount ({{ invoice.discount_percent }}%)</span>
+          <span>-{{ format_currency(invoice.discount_amount, invoice.currency) }}</span>
+        </div>
+      {% endif %}
+      {% if invoice.tax_amount > 0 %}
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
+          <span>Tax ({{ invoice.tax_percent }}%)</span>
+          <span>+{{ format_currency(invoice.tax_amount, invoice.currency) }}</span>
+        </div>
+      {% endif %}
+      <div style="display: flex; justify-content: space-between; border-top: 1px solid #111827; padding-top: 8px; margin-top: 6px; font-size: 16px; font-weight: 700; color: #111827;">
+        <span>Total</span>
+        <span>{{ format_currency(invoice.total, invoice.currency) }}</span>
+      </div>
+    </div>
+  </div>
+
+  {% if invoice.payment_terms or invoice.notes %}
+    <div style="margin-top: 36px; padding-top: 16px; border-top: 1px solid #F3F4F6; font-size: 11px; color: #9CA3AF;">
+      {% if invoice.payment_terms %}<div>Terms: {{ invoice.payment_terms }}</div>{% endif %}
+      {% if invoice.notes %}<div>Notes: {{ invoice.notes }}</div>{% endif %}
+    </div>
+  {% endif %}
+</div>

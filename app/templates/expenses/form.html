@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ 'Add Expense' if mode == 'create' else 'Edit Expense' }}{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">{{ 'Record business expenses or scan paper/digital receipts' if mode == 'create' else 'Update expense details' }}</span>
+{% endblock %}
+
+{% block top_actions %}
+  <a href="{{ url_for('expenses.index') }}" class="btn">Cancel</a>
+  <button type="submit" form="expenseForm" class="btn btn-primary">
+    {{ 'Save Expense' if mode == 'create' else 'Update Expense' }}
+  </button>
+{% endblock %}
+
+{% block content %}
+<form id="expenseForm" method="POST" action="{{ url_for('expenses.create') if mode == 'create' else url_for('expenses.edit', expense_id=expense.id) }}" enctype="multipart/form-data">
+  <div class="content-section" style="max-width: 750px;">
+    <div class="section-header">
+      <h2 class="section-title">Expense Details</h2>
+    </div>
+    <div class="section-body">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="expenseDate">Expense Date *</label>
+          <input type="date" id="expenseDate" name="date" class="form-control" value="{{ expense.date if mode == 'edit' else today }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="expenseMerchant">Merchant / Vendor</label>
+          <input type="text" id="expenseMerchant" name="merchant" class="form-control" placeholder="e.g. Adobe, Uber, Amazon, Airtel" value="{{ expense.merchant if mode == 'edit' else '' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="expenseDescription">Description / Item *</label>
+        <input type="text" id="expenseDescription" name="description" class="form-control" placeholder="e.g. Adobe Creative Cloud Annual Subscription" value="{{ expense.description if mode == 'edit' else '' }}" required>
+      </div>
+
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label class="form-label" for="expenseCategory">Category *</label>
+          <select id="expenseCategory" name="category" class="form-control" required>
+            {% for cat in categories %}
+              <option value="{{ cat }}" {% if (mode == 'edit' and expense.category == cat) %}selected{% endif %}>
+                {{ cat }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="expenseAmount">Amount *</label>
+          <input type="number" id="expenseAmount" name="amount" class="form-control numeric-cell" step="0.01" min="0.01" placeholder="0.00" value="{{ expense.amount if mode == 'edit' else '' }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="expenseCurrency">Currency</label>
+          <select id="expenseCurrency" name="currency" class="form-control">
+            {% for code, info in currencies.items() %}
+              <option value="{{ code }}" {% if (mode == 'edit' and expense.currency == code) or (mode == 'create' and code == 'INR') %}selected{% endif %}>
+                {{ code }} ({{ info.symbol }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="paymentMethod">Payment Method</label>
+          <select id="paymentMethod" name="payment_method" class="form-control">
+            <option value="Credit Card" {% if mode == 'edit' and expense.payment_method == 'Credit Card' %}selected{% endif %}>Credit Card</option>
+            <option value="Bank Transfer" {% if mode == 'edit' and expense.payment_method == 'Bank Transfer' %}selected{% endif %}>Bank Transfer / Wire</option>
+            <option value="UPI" {% if mode == 'edit' and expense.payment_method == 'UPI' %}selected{% endif %}>UPI / GPay / PhonePe</option>
+            <option value="Debit Card" {% if mode == 'edit' and expense.payment_method == 'Debit Card' %}selected{% endif %}>Debit Card</option>
+            <option value="Cash" {% if mode == 'edit' and expense.payment_method == 'Cash' %}selected{% endif %}>Cash</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="receiptFile">Attach Receipt Image</label>
+          <input type="file" id="receiptFile" name="receipt_file" class="form-control" accept="image/png, image/jpeg, image/jpg, image/webp">
+          <div class="form-help">Supported: PNG, JPG, JPEG, WEBP (Max 16MB)</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="expenseNotes">Notes / Project Allocation</label>
+        <input type="text" id="expenseNotes" name="notes" class="form-control" placeholder="e.g. Workstation upgrade for mobile app project" value="{{ expense.notes if mode == 'edit' else '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 12px; margin-top: 20px;">
+    <a href="{{ url_for('expenses.index') }}" class="btn">Cancel</a>
+    <button type="submit" class="btn btn-primary">
+      {{ 'Save Expense' if mode == 'create' else 'Update Expense' }}
+    </button>
+  </div>
+</form>
+{% endblock %}

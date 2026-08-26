@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block page_title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">Issued to {{ invoice.client_name }} on {{ invoice.invoice_date }}</span>
+{% endblock %}
+
+{% block top_actions %}
+  <a href="{{ url_for('invoices.index') }}" class="btn">Back to List</a>
+  
+  <button type="button" class="btn" onclick="window.print();">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    <span>Print / PDF</span>
+  </button>
+
+  {% if invoice.status != 'Paid' %}
+    <button type="button" class="btn btn-accent" data-modal-open="markPaidModal">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span>Mark as Paid</span>
+    </button>
+    <button type="button" class="btn" id="reminderTriggerBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+      <span>Send Reminder</span>
+    </button>
+  {% endif %}
+
+  <form action="{{ url_for('invoices.delete', invoice_id=invoice.id) }}" method="POST" style="display: inline;" data-confirm="Are you sure you want to delete invoice {{ invoice.invoice_number }}? This action cannot be undone.">
+    <button type="submit" class="btn btn-danger" title="Delete Invoice">Delete</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<!-- Template Switcher Bar -->
+<div class="toolbar-bar template-switcher-bar no-print" style="margin-bottom: 20px;">
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Template Style:</span>
+    <div class="filter-tabs">
+      <a href="{{ url_for('invoices.view', invoice_id=invoice.id, template='classic') }}" class="filter-tab {% if active_template == 'classic' %}active{% endif %}">Classic</a>
+      <a href="{{ url_for('invoices.view', invoice_id=invoice.id, template='modern') }}" class="filter-tab {% if active_template == 'modern' %}active{% endif %}">Modern</a>
+      <a href="{{ url_for('invoices.view', invoice_id=invoice.id, template='minimal') }}" class="filter-tab {% if active_template == 'minimal' %}active{% endif %}">Minimal</a>
+    </div>
+  </div>
+
+  <div style="font-size: 12px; color: var(--text-muted);">
+    Public Verification Link: 
+    <a href="{{ url_for('verification.verify_invoice', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}" target="_blank" style="font-family: var(--font-mono); font-weight: 600;">
+      /verify/{{ invoice.invoice_number }}/{{ invoice.verification_token[:8] }}...
+    </a>
+  </div>
+</div>
+
+<!-- Render Chosen Invoice Template -->
+{% if active_template == 'modern' %}
+  {% include "invoices/templates/modern.html" %}
+{% elif active_template == 'minimal' %}
+  {% include "invoices/templates/minimal.html" %}
+{% else %}
+  {% include "invoices/templates/classic.html" %}
+{% endif %}
+
+<!-- Mark as Paid Modal -->
+<div id="markPaidModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">Record Payment Settlement</span>
+      <button type="button" class="modal-close" data-modal-close>&times;</button>
+    </div>
+    <form action="{{ url_for('invoices.mark_paid', invoice_id=invoice.id) }}" method="POST">
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+          Record full settlement of <strong>{{ format_currency(invoice.total, invoice.currency) }}</strong> for invoice <strong>{{ invoice.invoice_number }}</strong>.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="paidDate">Settlement Date *</label>
+          <input type="date" id="paidDate" name="paid_date" class="form-control" value="{{ invoice.due_date }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="paymentMethod">Payment Method</label>
+          <select id="paymentMethod" name="payment_method" class="form-control">
+            <option value="Bank Transfer">Bank Transfer (NEFT / IMPS / Wire)</option>
+            <option value="UPI">UPI / GPay / PhonePe</option>
+            <option value="Credit Card / Stripe">Credit Card / Stripe</option>
+            <option value="PayPal">PayPal</option>
+            <option value="Cheque">Cheque</option>
+            <option value="Cash">Cash</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" data-modal-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">Confirm & Mark as Paid</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Payment Reminder Modal / Preview -->
+<div id="reminderModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">Payment Reminder</span>
+      <button type="button" class="modal-close" data-modal-close>&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="reminderStatusText" style="font-size: 13px; color: var(--text-primary); margin-bottom: 12px;"></div>
+      <div class="form-group">
+        <label class="form-label">Reminder Message</label>
+        <textarea id="reminderMessageArea" class="form-control" rows="6" readonly style="font-family: var(--font-mono); font-size: 12px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary btn-sm" id="copyReminderBtn">Copy Message to Clipboard</button>
+      <button type="button" class="btn btn-sm" data-modal-close>Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const reminderBtn = document.getElementById("reminderTriggerBtn");
+  const reminderModal = document.getElementById("reminderModal");
+  const statusText = document.getElementById("reminderStatusText");
+  const msgArea = document.getElementById("reminderMessageArea");
+  const copyBtn = document.getElementById("copyReminderBtn");
+
+  if (reminderBtn) {
+    reminderBtn.addEventListener("click", async () => {
+      reminderBtn.disabled = true;
+      try {
+        const resp = await fetch("{{ url_for('invoices.send_reminder', invoice_id=invoice.id) }}", {
+          method: "POST"
+        });
+        const data = await resp.json();
+        if (data.success) {
+          if (data.sent) {
+            statusText.innerHTML = `
+              <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; padding: 10px 14px; border-radius: var(--radius-sm); font-weight: 600; font-size: 12px; margin-bottom: 12px;">
+                ✓ Email Delivered Successfully to ${"{{ invoice.client_email }}"} via Gmail SMTP
+              </div>
+            `;
+          } else {
+            statusText.innerHTML = `
+              <div style="background-color: #F8FAFC; border: 1px solid #CBD5E1; color: #334155; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; margin-bottom: 12px;">
+                ${data.message}
+              </div>
+            `;
+          }
+          msgArea.value = data.preview || "Reminder email sent to {{ invoice.client_email }}.";
+          reminderModal.classList.add("active");
+        } else {
+          alert(data.message || "Failed to dispatch reminder.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error generating payment reminder.");
+      } finally {
+        reminderBtn.disabled = false;
+      }
+    });
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      msgArea.select();
+      navigator.clipboard.writeText(msgArea.value).then(() => {
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => { copyBtn.textContent = "Copy Message to Clipboard"; }, 2000);
+      });
+    });
+  }
+});
+</script>
+{% endblock %}

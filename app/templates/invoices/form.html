@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ 'New Invoice' if mode == 'create' else 'Edit Invoice ' + invoice.invoice_number }}{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">{{ 'Generate a clean, verifiable invoice' if mode == 'create' else 'Update line items, pricing, or terms' }}</span>
+{% endblock %}
+
+{% block top_actions %}
+  <a href="{{ url_for('invoices.index') }}" class="btn">Cancel</a>
+  <button type="submit" form="invoiceForm" class="btn btn-primary">
+    {{ 'Generate Invoice' if mode == 'create' else 'Save Changes' }}
+  </button>
+{% endblock %}
+
+{% block content %}
+<form id="invoiceForm" method="POST" action="{{ url_for('invoices.create') if mode == 'create' else url_for('invoices.edit', invoice_id=invoice.id) }}">
+  
+  <!-- Invoice Header Details -->
+  <div class="content-section">
+    <div class="section-header">
+      <h2 class="section-title">Invoice Details</h2>
+    </div>
+    <div class="section-body">
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label class="form-label" for="invoiceNumber">Invoice Number *</label>
+          <input type="text" id="invoiceNumber" name="invoice_number" class="form-control" style="font-family: var(--font-mono); font-weight: 600;" value="{{ invoice.invoice_number if mode == 'edit' else next_invoice_number }}" required>
+          <div class="form-help">Unique sequential identifier (e.g. INV-001)</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="clientSelect">Client *</label>
+          <select id="clientSelect" name="client_id" class="form-control" required>
+            <option value="">-- Select Client --</option>
+            {% for c in clients %}
+              <option value="{{ c.id }}" {% if (mode == 'edit' and invoice.client_id == c.id) or (request.args.get('client_id')|int == c.id) %}selected{% endif %}>
+                {{ c.name }}{% if c.company_name %} ({{ c.company_name }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="form-help"><a href="{{ url_for('clients.create') }}" target="_blank">+ Add New Client</a></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="currencySelect">Currency *</label>
+          <select id="currencySelect" name="currency" class="form-control">
+            {% for code, info in currencies.items() %}
+              <option value="{{ code }}" {% if (mode == 'edit' and invoice.currency == code) or (mode == 'create' and profile.default_currency == code) %}selected{% endif %}>
+                {{ code }} ({{ info.symbol }}) - {{ info.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid-3" style="margin-top: 10px;">
+        <div class="form-group">
+          <label class="form-label" for="invoiceDate">Invoice Date *</label>
+          <input type="date" id="invoiceDate" name="invoice_date" class="form-control" value="{{ invoice.invoice_date if mode == 'edit' else today }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="dueDate">Due Date *</label>
+          <input type="date" id="dueDate" name="due_date" class="form-control" value="{{ invoice.due_date if mode == 'edit' else '' }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="templateSelect">Invoice Template</label>
+          <select id="templateSelect" name="template" class="form-control">
+            {% for tmpl in templates %}
+              <option value="{{ tmpl }}" {% if (mode == 'edit' and invoice.template == tmpl) or (mode == 'create' and profile.default_template == tmpl) %}selected{% endif %}>
+                {{ tmpl|capitalize }} Template
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      {% if mode == 'edit' %}
+        <div class="form-group" style="max-width: 250px; margin-top: 10px;">
+          <label class="form-label" for="statusSelect">Invoice Status</label>
+          <select id="statusSelect" name="status" class="form-control">
+            <option value="Draft" {% if invoice.status == 'Draft' %}selected{% endif %}>Draft</option>
+            <option value="Pending" {% if invoice.status == 'Pending' %}selected{% endif %}>Pending</option>
+            <option value="Paid" {% if invoice.status == 'Paid' %}selected{% endif %}>Paid</option>
+            <option value="Overdue" {% if invoice.status == 'Overdue' %}selected{% endif %}>Overdue</option>
+            <option value="Cancelled" {% if invoice.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+          </select>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Dynamic Line Items -->
+  <div class="content-section">
+    <div class="section-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <h2 class="section-title">Services & Line Items</h2>
+        <span style="font-size: 11px; color: var(--text-muted);">Hours × Rate = Amount</span>
+      </div>
+      <button type="button" id="addItemBtn" class="btn btn-sm">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>+ Add Line Item</span>
+      </button>
+    </div>
+
+    <div class="section-body">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Description & Deliverables</th>
+            <th style="width: 100px;">Hours / Units</th>
+            <th style="width: 140px;">Rate / Unit</th>
+            <th style="width: 130px; text-align: right;">Amount</th>
+            <th style="width: 40px; text-align: center;"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsTableBody">
+          {% if mode == 'edit' and invoice.line_items %}
+            {% for itm in invoice.line_items %}
+              <tr class="item-row">
+                <td>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <input type="text" name="item_description[]" class="form-control item-description" placeholder="Service description" value="{{ itm.description }}" required>
+                    <button type="button" class="btn btn-sm btn-icon-only ai-row-btn" title="Generate with AI Assistant">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                    </button>
+                  </div>
+                </td>
+                <td style="width: 100px;">
+                  <input type="number" name="item_hours[]" class="form-control item-hours numeric-cell" step="0.25" min="0.1" value="{{ itm.hours }}" required>
+                </td>
+                <td style="width: 140px;">
+                  <input type="number" name="item_rate[]" class="form-control item-rate numeric-cell" step="1" min="0" value="{{ itm.hourly_rate }}" required>
+                </td>
+                <td style="width: 130px; text-align: right; font-weight: 600;">
+                  <span class="item-amount">{{ format_currency(itm.amount, invoice.currency) }}</span>
+                </td>
+                <td style="width: 40px; text-align: center;">
+                  <button type="button" class="btn btn-sm btn-danger btn-icon-only remove-row-btn" title="Remove item">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr class="item-row">
+              <td>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="text" name="item_description[]" class="form-control item-description" placeholder="e.g. Responsive Website Frontend Engineering" required>
+                  <button type="button" class="btn btn-sm btn-icon-only ai-row-btn" title="Generate with AI Assistant">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                  </button>
+                </div>
+              </td>
+              <td style="width: 100px;">
+                <input type="number" name="item_hours[]" class="form-control item-hours numeric-cell" step="0.25" min="0.1" value="1.0" required>
+              </td>
+              <td style="width: 140px;">
+                <input type="number" name="item_rate[]" class="form-control item-rate numeric-cell" step="1" min="0" value="1500" required>
+              </td>
+              <td style="width: 130px; text-align: right; font-weight: 600;">
+                <span class="item-amount">₹1,500.00</span>
+              </td>
+              <td style="width: 40px; text-align: center;">
+                <button type="button" class="btn btn-sm btn-danger btn-icon-only remove-row-btn" title="Remove item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      <!-- Calculations & Summary Box -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 20px; flex-wrap: wrap; gap: 20px;">
+        <div style="flex: 1; min-width: 280px; max-width: 450px;">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="discountPercent">Discount (%)</label>
+              <input type="number" id="discountPercent" name="discount_percent" class="form-control numeric-cell" step="0.5" min="0" max="100" value="{{ invoice.discount_percent if mode == 'edit' else 0 }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="taxPercent">Tax / GST (%)</label>
+              <input type="number" id="taxPercent" name="tax_percent" class="form-control numeric-cell" step="0.5" min="0" max="100" value="{{ invoice.tax_percent if mode == 'edit' else (profile.default_tax_percent if profile else 18.0) }}">
+            </div>
+          </div>
+        </div>
+
+        <div class="items-summary-box">
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span id="summarySubtotal" style="font-weight: 600;">₹0.00</span>
+          </div>
+          <div class="summary-row">
+            <span>Discount</span>
+            <span id="summaryDiscount" style="color: #047857;">-₹0.00</span>
+          </div>
+          <div class="summary-row">
+            <span>Tax Amount</span>
+            <span id="summaryTax">+₹0.00</span>
+          </div>
+          <div class="summary-row grand-total">
+            <span>Grand Total</span>
+            <span id="summaryTotal">₹0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes & Terms -->
+  <div class="content-section">
+    <div class="section-header">
+      <h2 class="section-title">Payment Terms & Notes</h2>
+    </div>
+    <div class="section-body">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="paymentTerms">Payment Terms</label>
+          <input type="text" id="paymentTerms" name="payment_terms" class="form-control" value="{{ invoice.payment_terms if mode == 'edit' else (profile.default_payment_terms if profile else 'Payment due within 15 days.') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="notes">Public Client Notes</label>
+          <input type="text" id="notes" name="notes" class="form-control" placeholder="e.g. Thank you for your business!" value="{{ invoice.notes if mode == 'edit' else '' }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; margin-bottom: 40px;">
+    <a href="{{ url_for('invoices.index') }}" class="btn">Cancel</a>
+    <button type="submit" class="btn btn-primary">
+      {{ 'Generate Invoice' if mode == 'create' else 'Save Changes' }}
+    </button>
+  </div>
+</form>
+
+<!-- AI Description Assistant Modal -->
+<div id="aiModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+        <span class="modal-title">AI Invoice Assistant</span>
+      </div>
+      <button type="button" class="modal-close" data-modal-close>&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="aiServiceName">Service / Skill *</label>
+        <input type="text" id="aiServiceName" class="form-control" placeholder="e.g. Website Development, UI/UX Design, Cloud Setup">
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="aiTone">Tone</label>
+          <select id="aiTone" class="form-control">
+            <option value="Professional">Professional (Recommended)</option>
+            <option value="Simple">Simple & Concise</option>
+            <option value="Detailed">Detailed & Technical</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="aiContext">Optional Context</label>
+          <input type="text" id="aiContext" class="form-control" placeholder="e.g. Milestone 1 deliverables">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+        <span id="aiStatusMsg" style="font-size: 11px; color: var(--text-muted);">AI only generates descriptions. Prices remain deterministic.</span>
+        <button type="button" id="aiGenerateBtn" class="btn btn-accent btn-sm">Generate Description</button>
+      </div>
+
+      <div id="aiResultBox" style="display: none; margin-top: 16px; padding: 14px; background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: var(--radius-md);">
+        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Generated Description</div>
+        <p id="aiGeneratedText" style="font-size: 13px; color: var(--text-primary); line-height: 1.4;"></p>
+        <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+          <button type="button" id="aiApplyBtn" class="btn btn-primary btn-sm">Use in Line Item</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/invoice_calc.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ai_assistant.js') }}"></script>
+{% endblock %}

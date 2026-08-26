@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block page_title %}Executive Command Center{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">{{ profile.business_name or 'Freelance Finance' }} • Real-time Business Intelligence</span>
+{% endblock %}
+
+{% block top_actions %}
+  <button type="button" class="btn btn-accent btn-sm" data-modal-open="aiModal">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+    <span>AI Assistant</span>
+  </button>
+  <a href="{{ url_for('invoices.create') }}" class="btn btn-primary btn-sm">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    <span>+ New Invoice</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+<!-- Compact Executive KPI Ribbon (Under ₹80,000) -->
+<div class="metrics-grid" style="grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px;">
+  <div class="stat-card" style="padding: 12px 14px;">
+    <div class="stat-label" style="font-size: 10px; margin-bottom: 4px;">Total Invoiced</div>
+    <div class="stat-value" style="font-size: 16px;">{{ format_currency(metrics.total_invoiced, metrics.currency) }}</div>
+  </div>
+
+  <div class="stat-card highlight" style="padding: 12px 14px; background-color: #F0FDF4; border-color: #BBF7D0;">
+    <div class="stat-label" style="font-size: 10px; margin-bottom: 4px; color: #166534;">Settled (Paid)</div>
+    <div class="stat-value" style="font-size: 16px; color: #15803D;">{{ format_currency(metrics.total_paid, metrics.currency) }}</div>
+  </div>
+
+  <div class="stat-card" style="padding: 12px 14px; background-color: #FFFBEB; border-color: #FDE68A;">
+    <div class="stat-label" style="font-size: 10px; margin-bottom: 4px; color: #92400E;">Pending</div>
+    <div class="stat-value" style="font-size: 16px; color: #B45309;">{{ format_currency(metrics.total_pending, metrics.currency) }}</div>
+  </div>
+
+  <div class="stat-card" style="padding: 12px 14px; background-color: #FEF2F2; border-color: #FECACA;">
+    <div class="stat-label" style="font-size: 10px; margin-bottom: 4px; color: #991B1B;">Overdue</div>
+    <div class="stat-value" style="font-size: 16px; color: #DC2626;">{{ format_currency(metrics.total_overdue, metrics.currency) }}</div>
+  </div>
+
+  <div class="stat-card" style="padding: 12px 14px;">
+    <div class="stat-label" style="font-size: 10px; margin-bottom: 4px;">Total Expenses</div>
+    <div class="stat-value" style="font-size: 16px; color: #4B5563;">{{ format_currency(metrics.total_expenses, metrics.currency) }}</div>
+  </div>
+
+  <div class="stat-card income" style="padding: 12px 14px; background-color: #0F172A; border-color: #0F172A;">
+    <div class="stat-label" style="font-size: 10px; margin-bottom: 4px; color: #94A3B8;">Realized Net Income</div>
+    <div class="stat-value" style="font-size: 17px; color: #34D399; font-weight: 700;">{{ format_currency(metrics.net_income, metrics.currency) }}</div>
+  </div>
+</div>
+
+<!-- Main 2-Column Compact Command Center -->
+<div style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; margin-bottom: 14px;">
+  
+  <!-- Left Column: Visual Analytics & Smart Business Insights -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    
+    <!-- Visual Financial Analytics (HTML5 Canvas Charts) -->
+    <section class="content-section" style="margin-bottom: 0;">
+      <div class="section-header" style="padding: 10px 16px; background-color: #F8FAFC;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <h2 class="section-title" style="font-size: 13px;">Financial Cash Flow & Category Distribution</h2>
+        </div>
+        <span style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);">Live Chart Analytics</span>
+      </div>
+      <div class="section-body" style="padding: 12px 16px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; align-items: center;">
+        <div>
+          <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 6px;">Monthly Cash Flow (Revenue vs Expenses)</div>
+          <canvas id="cashflowCanvas" height="100" style="width: 100%; height: 100px; display: block;"></canvas>
+        </div>
+        <div style="border-left: 1px solid #F1F5F9; padding-left: 12px;">
+          <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 6px;">Expense Category Breakdown</div>
+          <canvas id="categoryDonutCanvas" height="100" style="width: 100%; height: 100px; display: block;"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Smart Business Insights Engine -->
+    <section class="content-section" style="margin-bottom: 0;">
+      <div class="section-header" style="padding: 10px 16px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          <h2 class="section-title" style="font-size: 13px;">Smart Business Insights</h2>
+        </div>
+        <span style="font-size: 10px; color: var(--text-muted);">Deterministic Pattern Intelligence</span>
+      </div>
+      <div class="section-body" style="padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;">
+        {% if insights %}
+          {% for insight in insights %}
+            <div class="insight-card {{ insight.severity }}" style="padding: 8px 12px; gap: 10px;">
+              <div class="insight-icon-box" style="width: 22px; height: 22px;">
+                {% if insight.icon == 'alert-circle' %}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                {% elif insight.icon == 'trending-up' %}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                {% elif insight.icon == 'user-check' %}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                {% else %}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                {% endif %}
+              </div>
+              <div class="insight-content">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                  <span class="insight-title" style="font-size: 11px;">{{ insight.title }}</span>
+                  <span style="font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--text-muted);">{{ insight.type }}</span>
+                </div>
+                <div class="insight-message" style="font-size: 12px; margin-top: 1px;">{{ insight.message }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 8px;">No active alerts. All clients & expenses within normal thresholds.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <!-- Right Column: Operations Ledger & Receivables -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    
+    <!-- Recent Invoices Ledger -->
+    <section class="content-section" style="margin-bottom: 0;">
+      <div class="section-header" style="padding: 10px 16px;">
+        <h2 class="section-title" style="font-size: 13px;">Recent Invoices</h2>
+        <a href="{{ url_for('invoices.index') }}" class="btn btn-sm" style="font-size: 11px; padding: 2px 8px;">View All</a>
+      </div>
+      <div class="table-container">
+        <table class="app-table" style="font-size: 12px;">
+          <thead>
+            <tr>
+              <th style="padding: 6px 12px;">Invoice</th>
+              <th style="padding: 6px 12px;">Client</th>
+              <th class="numeric-cell" style="padding: 6px 12px;">Amount</th>
+              <th style="padding: 6px 12px;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in recent_invoices %}
+              <tr>
+                <td style="padding: 8px 12px;">
+                  <a href="{{ url_for('invoices.view', invoice_id=inv.id) }}" style="font-weight: 600; font-family: var(--font-mono);">
+                    {{ inv.invoice_number }}
+                  </a>
+                </td>
+                <td style="padding: 8px 12px;">
+                  <span style="font-weight: 500;">{{ inv.client_name }}</span>
+                </td>
+                <td class="numeric-cell" style="padding: 8px 12px; font-weight: 600;">
+                  {{ format_currency(inv.total, inv.currency) }}
+                </td>
+                <td style="padding: 8px 12px;">
+                  <span class="status-badge {{ inv.status.lower() }}" style="font-size: 9px; padding: 1px 6px;">{{ inv.status }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Receivables Watchlist & Due Dates -->
+    <section class="content-section" style="margin-bottom: 0;">
+      <div class="section-header" style="padding: 10px 16px; background-color: #F8FAFC;">
+        <h2 class="section-title" style="font-size: 13px;">Pending Receivables Watchlist</h2>
+        <span style="font-size: 10px; color: var(--text-muted);">Due dates</span>
+      </div>
+      <div class="table-container">
+        <table class="app-table" style="font-size: 12px;">
+          <thead>
+            <tr>
+              <th style="padding: 6px 12px;">Client & Ref</th>
+              <th class="numeric-cell" style="padding: 6px 12px;">Amount</th>
+              <th style="padding: 6px 12px;">Due Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pay in upcoming_payments %}
+              <tr>
+                <td style="padding: 8px 12px;">
+                  <a href="{{ url_for('invoices.view', invoice_id=pay.id) }}" style="font-weight: 600;">
+                    {{ pay.client_name }}
+                  </a>
+                  <span style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); margin-left: 4px;">{{ pay.invoice_number }}</span>
+                </td>
+                <td class="numeric-cell" style="padding: 8px 12px; font-weight: 600;">
+                  {{ format_currency(pay.total, pay.currency) }}
+                </td>
+                <td style="padding: 8px 12px;">
+                  <span style="font-size: 11px; {% if pay.status == 'Overdue' %}color: #DC2626; font-weight: 700;{% endif %}">
+                    {{ pay.due_date }}
+                  </span>
+                  {% if pay.status == 'Overdue' %}
+                    <span class="status-badge overdue" style="font-size: 8px; margin-left: 2px;">LATE</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- Compact 1-Click Launchpad Strip -->
+<div class="content-section" style="margin-bottom: 0; background-color: #F8FAFC; border: 1px dashed #CBD5E1;">
+  <div class="section-body" style="padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; letter-spacing: 0.04em;">Quick Tools:</span>
+    <button type="button" class="btn btn-sm" data-modal-open="aiModal" style="background: #FFF;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+      <span>AI Description Assistant</span>
+    </button>
+    <a href="{{ url_for('invoices.export_csv') }}" class="btn btn-sm" style="background: #FFF;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      <span>Export Invoices CSV</span>
+    </a>
+    <a href="{{ url_for('expenses.create') }}" class="btn btn-sm" style="background: #FFF;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <span>Record Expense</span>
+    </a>
+  </div>
+</div>
+
+<!-- Embedded Interactive AI Description Assistant Modal -->
+<div id="aiModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+        <span class="modal-title">AI Invoice Assistant</span>
+      </div>
+      <button type="button" class="modal-close" data-modal-close>&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="aiServiceName">Service / Deliverable *</label>
+        <input type="text" id="aiServiceName" class="form-control" placeholder="e.g. LLM Microservice, Responsive Web App, UI Design System">
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="aiTone">Tone</label>
+          <select id="aiTone" class="form-control">
+            <option value="Professional">Professional</option>
+            <option value="Simple">Simple & Concise</option>
+            <option value="Detailed">Detailed & Technical</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="aiContext">Context / Milestone</label>
+          <input type="text" id="aiContext" class="form-control" placeholder="e.g. Milestone 1 Sprint">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+        <span id="aiStatusMsg" style="font-size: 11px; color: var(--text-muted);">AI synthesizes descriptions; calculations remain deterministic.</span>
+        <button type="button" id="aiGenerateBtn" class="btn btn-accent btn-sm">Generate Description</button>
+      </div>
+
+      <div id="aiResultBox" style="display: none; margin-top: 14px; padding: 12px; background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: var(--radius-md);">
+        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Generated Deliverable Description</div>
+        <p id="aiGeneratedText" style="font-size: 12px; color: var(--text-primary); line-height: 1.4;"></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ai_assistant.js') }}"></script>
+<script>
+// Lightweight Canvas Chart Renderer (Zero-dependency & 100% offline reliable)
+document.addEventListener("DOMContentLoaded", () => {
+  const payload = JSON.parse('{{ chart_payload|safe }}');
+
+  // 1. Cashflow Bar Chart
+  const cfCanvas = document.getElementById("cashflowCanvas");
+  if (cfCanvas) {
+    const ctx = cfCanvas.getContext("2d");
+    const width = cfCanvas.width = cfCanvas.offsetWidth;
+    const height = cfCanvas.height = 100;
+    
+    ctx.clearRect(0, 0, width, height);
+
+    const labels = payload.cashflow_labels;
+    const income = payload.cashflow_income;
+    const expenses = payload.cashflow_expenses;
+    const maxVal = Math.max(...income, ...expenses, 80000);
+
+    const barGroupWidth = (width - 40) / labels.length;
+    const barWidth = 14;
+
+    labels.forEach((lbl, i) => {
+      const xGroup = 30 + i * barGroupWidth;
+      
+      // Income bar (Green)
+      const hInc = (income[i] / maxVal) * (height - 30);
+      ctx.fillStyle = "#10B981";
+      ctx.fillRect(xGroup, height - 20 - hInc, barWidth, hInc);
+
+      // Expense bar (Gray)
+      const hExp = (expenses[i] / maxVal) * (height - 30);
+      ctx.fillStyle = "#64748B";
+      ctx.fillRect(xGroup + barWidth + 3, height - 20 - hExp, barWidth, hExp);
+
+      // Label
+      ctx.fillStyle = "#64748B";
+      ctx.font = "9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(lbl.split(" ")[0], xGroup + barWidth, height - 5);
+    });
+
+    // Legend
+    ctx.fillStyle = "#10B981";
+    ctx.fillRect(width - 95, 8, 8, 8);
+    ctx.fillStyle = "#334155";
+    ctx.font = "9px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("Paid", width - 82, 15);
+
+    ctx.fillStyle = "#64748B";
+    ctx.fillRect(width - 50, 8, 8, 8);
+    ctx.fillText("Expenses", width - 38, 15);
+  }
+
+  // 2. Category Donut Chart
+  const catCanvas = document.getElementById("categoryDonutCanvas");
+  if (catCanvas) {
+    const ctx = catCanvas.getContext("2d");
+    const width = catCanvas.width = catCanvas.offsetWidth;
+    const height = catCanvas.height = 100;
+
+    const labels = payload.cat_labels;
+    const values = payload.cat_values;
+    const total = values.reduce((a, b) => a + b, 0) || 1;
+
+    const colors = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#DB2777", "#64748B"];
+    const centerX = 45;
+    const centerY = height / 2;
+    const radius = 34;
+    const innerRadius = 20;
+
+    let startAngle = -Math.PI / 2;
+
+    values.slice(0, 4).forEach((val, i) => {
+      const sliceAngle = (val / total) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+      ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
+      ctx.closePath();
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fill();
+
+      // Legend Item
+      const yLegend = 20 + i * 16;
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fillRect(100, yLegend - 8, 8, 8);
+      ctx.fillStyle = "#334155";
+      ctx.font = "10px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(labels[i] + ` (₹${Math.round(val)})`, 112, yLegend);
+
+      startAngle += sliceAngle;
+    });
+  }
+});
+</script>
+{% endblock %}

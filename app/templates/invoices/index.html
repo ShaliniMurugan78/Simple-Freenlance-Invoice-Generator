@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block page_title %}Invoices{% endblock %}
+{% block page_subtitle %}
+  <span class="page-subtitle">Manage client billing, payments & records</span>
+{% endblock %}
+
+{% block top_actions %}
+  <a href="{{ url_for('invoices.export_csv') }}" class="btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    <span>Export CSV</span>
+  </a>
+  <a href="{{ url_for('invoices.create') }}" class="btn btn-primary">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    <span>Create Invoice</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="toolbar-bar">
+  <!-- Search input -->
+  <form method="GET" action="{{ url_for('invoices.index') }}" style="display: flex; gap: 8px;">
+    {% if status_filter %}
+      <input type="hidden" name="status" value="{{ status_filter }}">
+    {% endif %}
+    <div class="search-input-wrapper">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" name="search" class="form-control" placeholder="Search invoice number, client..." value="{{ search }}">
+    </div>
+    {% if search %}
+      <a href="{{ url_for('invoices.index', status=status_filter) }}" class="btn btn-sm" style="align-self: center;">Clear</a>
+    {% endif %}
+  </form>
+
+  <!-- Filter tabs -->
+  <div class="filter-tabs">
+    <a href="{{ url_for('invoices.index', search=search) }}" class="filter-tab {% if not status_filter or status_filter.lower() == 'all' %}active{% endif %}">
+      All ({{ counts.all }})
+    </a>
+    <a href="{{ url_for('invoices.index', status='Paid', search=search) }}" class="filter-tab {% if status_filter == 'Paid' %}active{% endif %}">
+      Paid ({{ counts.Paid }})
+    </a>
+    <a href="{{ url_for('invoices.index', status='Pending', search=search) }}" class="filter-tab {% if status_filter == 'Pending' %}active{% endif %}">
+      Pending ({{ counts.Pending }})
+    </a>
+    <a href="{{ url_for('invoices.index', status='Overdue', search=search) }}" class="filter-tab {% if status_filter == 'Overdue' %}active{% endif %}">
+      Overdue ({{ counts.Overdue }})
+    </a>
+    <a href="{{ url_for('invoices.index', status='Draft', search=search) }}" class="filter-tab {% if status_filter == 'Draft' %}active{% endif %}">
+      Draft ({{ counts.Draft }})
+    </a>
+  </div>
+</div>
+
+<div class="content-section">
+  {% if invoices %}
+    <div class="table-container">
+      <table class="app-table">
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Client</th>
+            <th>Issue Date</th>
+            <th>Due Date</th>
+            <th class="numeric-cell">Grand Total</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+            <tr>
+              <td>
+                <a href="{{ url_for('invoices.view', invoice_id=inv.id) }}" style="font-weight: 600; font-family: var(--font-mono);">
+                  {{ inv.invoice_number }}
+                </a>
+              </td>
+              <td>
+                <a href="{{ url_for('clients.view', client_id=inv.client_id) }}" style="color: var(--text-primary); font-weight: 500;">
+                  {{ inv.client_name }}
+                </a>
+                {% if inv.company_name %}
+                  <div style="font-size: 11px; color: var(--text-muted);">{{ inv.company_name }}</div>
+                {% endif %}
+              </td>
+              <td style="color: var(--text-muted); font-size: 12px;">
+                {{ inv.invoice_date }}
+              </td>
+              <td style="font-size: 12px;">
+                <span {% if inv.status == 'Overdue' %}style="color: #DC2626; font-weight: 600;"{% endif %}>
+                  {{ inv.due_date }}
+                </span>
+              </td>
+              <td class="numeric-cell" style="font-weight: 600; font-size: 14px;">
+                {{ format_currency(inv.total, inv.currency) }}
+              </td>
+              <td>
+                <span class="status-badge {{ inv.status.lower() }}">{{ inv.status }}</span>
+              </td>
+              <td style="text-align: right;">
+                <a href="{{ url_for('invoices.view', invoice_id=inv.id) }}" class="btn btn-sm" title="View & Print">
+                  View
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-title">No invoices found</div>
+      <p class="empty-state-text">
+        {% if search or status_filter %}
+          Try adjusting your search query or status filter.
+        {% else %}
+          Create your first invoice to start tracking your freelance payments.
+        {% endif %}
+      </p>
+      {% if search or status_filter %}
+        <a href="{{ url_for('invoices.index') }}" class="btn btn-sm">Clear Filters</a>
+      {% else %}
+        <a href="{{ url_for('invoices.create') }}" class="btn btn-primary btn-sm">Create Invoice</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

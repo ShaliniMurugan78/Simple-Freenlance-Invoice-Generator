@@ -1,0 +1,97 @@
+/* ==========================================================================
+   Smart Freelance Invoice & Financial Management Platform - Print Stylesheet
+   Optimized strictly for A4 paper and PDF output.
+   ========================================================================== */
+
+@page {
+  size: A4 portrait;
+  margin: 12mm 15mm;
+}
+
+@media print {
+  /* Hide all app chrome and interactive controls */
+  .app-sidebar,
+  .top-bar,
+  .sidebar-nav,
+  .sidebar-footer,
+  .mobile-nav-toggle,
+  .no-print,
+  .btn,
+  .flash-container,
+  .template-switcher-bar,
+  .invoice-actions-bar,
+  .modal-backdrop {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset layout structure for plain paper page flow */
+  html, body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .app-layout,
+  .app-main,
+  .page-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: transparent !important;
+    display: block !important;
+  }
+
+  /* Printable Invoice Container */
+  .invoice-sheet {
+    background-color: #FFFFFF !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Links should not show URLs or colored text */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  /* Table styling in print */
+  .invoice-items-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .invoice-items-table th {
+    background-color: #F3F4F6 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border-bottom: 1.5pt solid #9CA3AF !important;
+  }
+
+  .invoice-items-table td {
+    border-bottom: 0.5pt solid #E5E7EB !important;
+  }
+
+  /* Badges & Status in Print */
+  .status-badge {
+    border: 1pt solid #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* QR Code in Print */
+  .invoice-qr-box img {
+    max-width: 90px !important;
+    height: auto !important;
+  }
+}
