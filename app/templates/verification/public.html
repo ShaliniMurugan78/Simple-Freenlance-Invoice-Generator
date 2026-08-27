@@ -166,23 +166,29 @@
 
           {% if upi_uri %}
             <div style="margin-bottom: 10px;">
-              <a href="{{ upi_uri }}" class="btn btn-sm"
+              <a href="{{ upi_uri }}" id="upiPayBtn" class="btn btn-sm"
                  style="background-color:#059669; color:#FFFFFF; font-weight:600; width:100%; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><path d="M9 12L11 14L15 10"/></svg>
-                Pay via UPI App (GPay / PhonePe)
+                Pay via UPI App (GPay / PhonePe / Paytm)
               </a>
+            </div>
+
+            <!-- Waiting state after tapping pay -->
+            <div id="waitingState" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:10px; margin-bottom:10px; text-align:center;">
+              <div style="font-size:12px; font-weight:600; color:#92400E;">⏳ Processing payment in UPI App...</div>
+              <div style="font-size:11px; color:#B45309; margin-top:2px;">Complete payment and return here — status auto-updates to PAID!</div>
             </div>
           {% endif %}
 
           <div style="margin-top: 10px; border-top: 1px dashed #86EFAC; padding-top: 10px;">
             <div style="font-size: 11px; color: #166534; font-weight: 600; margin-bottom: 6px;">
-              Completed your payment?
+              Or submit payment reference:
             </div>
             <form action="{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}" method="POST" style="display: flex; gap: 6px; flex-direction: column;">
               <input type="text" name="utr_number" class="form-control" placeholder="UPI Reference / UTR Number (optional)" style="font-size: 11px; padding: 6px 10px; background: #FFFFFF; text-align: center;">
               <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; font-size: 12px; background: #0F172A;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span>I Have Completed Payment (Confirm)</span>
+                <span>Confirm Payment</span>
               </button>
             </form>
           </div>
@@ -210,6 +216,54 @@
       </div>
     </div>
   </div>
+
+{% if invoice.status != 'Paid' and upi_uri %}
+<script>
+  const CONFIRM_URL = "{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}";
+  const upiBtn = document.getElementById('upiPayBtn');
+  const waitingState = document.getElementById('waitingState');
+  let upiLaunched = false;
+  let settled = false;
+
+  if (upiBtn) {
+    upiBtn.addEventListener('click', () => {
+      upiLaunched = true;
+      if (waitingState) waitingState.style.display = 'block';
+    });
+  }
+
+  // Auto-detect when client finishes paying in UPI app and returns to browser
+  document.addEventListener('visibilitychange', () => {
+    if (upiLaunched && document.visibilityState === 'visible' && !settled) {
+      settled = true;
+      fetch(CONFIRM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+        body: 'utr_number=AUTO_DETECT_RETURN'
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const upiSection = document.getElementById('upiPaySection');
+          if (upiSection) {
+            upiSection.innerHTML = `
+              <div style="text-align:center; padding:12px 0;">
+                <div style="font-size:36px; margin-bottom:8px;">✅</div>
+                <div style="font-size:16px; font-weight:700; color:#065F46; margin-bottom:4px;">Payment Confirmed!</div>
+                <div style="font-size:12px; color:#047857;">Invoice marked as <strong>PAID</strong> on ${data.paid_date}</div>
+                <div style="margin-top:8px; font-size:11px; color:#6B7280;">Auto-detected from UPI app return. Thank you!</div>
+              </div>
+            `;
+            upiSection.style.background = '#ECFDF5';
+            upiSection.style.border = '1px solid #A7F3D0';
+          }
+        }
+      })
+      .catch(() => {});
+    }
+  });
+</script>
+{% endif %}
 
 </body>
 </html>
