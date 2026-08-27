@@ -74,11 +74,11 @@ def check_status(invoice_number: str, token: str):
 
 
 @verification_bp.route("/<invoice_number>/<token>/confirm-payment",
-                        methods=["GET", "POST"])
+                        methods=["POST"])
 def confirm_payment(invoice_number: str, token: str):
     """
-    Automatic payment confirmation endpoint.
-    Handles instant auto-detection, QR scan settlement, and background triggers without requiring manual button clicks.
+    Client payment confirmation endpoint.
+    Called when client confirms payment or provides UPI reference/UTR number.
     """
     db = get_db()
     inv = db.execute("""
