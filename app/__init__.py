@@ -39,13 +39,12 @@ def create_app(config_class=Config):
         public_endpoints = {
             "auth.login",
             "auth.register",
-            "auth.logout",
-            "verification.verify_invoice",
-            "verification.confirm_payment",
-            "static"}
+            "auth.logout"}
         if request.endpoint in public_endpoints or (
-                request.endpoint and request.endpoint.startswith("static")):
+                request.endpoint and (
+                    request.endpoint.startswith("static") or 
+                    request.endpoint.startswith("verification."))):
             return None
-        if "user_id"not in session:
+        if "user_id" not in session:
             return redirect(url_for("auth.login", next=request.url))
     return app

@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invoice Verification & Payment - {{ invoice.invoice_number }}</title>
+  <title>Invoice Verification &amp; Payment - {{ invoice.invoice_number }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% if invoice.status != 'Paid' and is_razorpay_enabled %}
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  {% endif %}
   <style>
     body {
       background-color: #0F172A;
@@ -89,6 +92,56 @@
       margin-top: 16px;
       text-align: center;
     }
+    .rzp-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 10px;
+      transition: opacity 0.2s;
+      letter-spacing: 0.02em;
+    }
+    .rzp-btn:hover { opacity: 0.92; }
+    .rzp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .rzp-powered {
+      font-size: 10px;
+      color: #6B7280;
+      margin-top: 4px;
+      margin-bottom: 10px;
+    }
+    .rzp-divider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .rzp-divider::before, .rzp-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #D1FAE5;
+    }
+    .rzp-divider span {
+      font-size: 11px;
+      color: #6B7280;
+    }
+    #rzpSpinner {
+      display: none;
+      font-size: 12px;
+      color: #1D4ED8;
+      padding: 8px;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
   </style>
 </head>
 <body>
@@ -142,7 +195,7 @@
       <div class="verify-row">
         <span class="verify-label">Current Status</span>
         <span class="verify-val">
-          <span class="status-badge {{ invoice.status.lower() }}">{{ invoice.status }}</span>
+          <span class="status-badge {{ invoice.status.lower() }}" id="statusBadge">{{ invoice.status }}</span>
         </span>
       </div>
 
@@ -153,50 +206,74 @@
         </div>
       {% endif %}
 
-      <!-- Direct UPI Payment & Confirmation Section -->
-      {% if invoice.status != 'Paid' and payment_qr_data %}
-        <div class="upi-pay-card" id="upiPaySection">
-          <div style="font-size: 12px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
-            Scan to Pay via UPI (GPay / PhonePe / Paytm)
-          </div>
+      <!-- Payment Section -->
+      {% if invoice.status != 'Paid' %}
+        <div class="upi-pay-card" id="paymentSection">
 
-          <div style="display: flex; justify-content: center; margin: 8px 0;">
-            <img src="{{ payment_qr_data }}" alt="UPI QR Code" style="width: 135px; height: 135px; border-radius: var(--radius-sm); border: 1px solid #86EFAC;">
-          </div>
-
-          {% if upi_uri %}
-            <div style="margin-bottom: 10px;">
-              <a href="{{ upi_uri }}" id="upiPayBtn" class="btn btn-sm"
-                 style="background-color:#059669; color:#FFFFFF; font-weight:600; width:100%; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><path d="M9 12L11 14L15 10"/></svg>
-                Pay via UPI App (GPay / PhonePe / Paytm)
-              </a>
+          {% if is_razorpay_enabled %}
+            <!-- ✅ Razorpay Secure Checkout Mode -->
+            <div style="font-size: 12px; font-weight: 700; color: #1E3A8A; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px;">
+              🔒 Secure Online Payment
             </div>
+            <button id="rzpPayBtn" class="rzp-btn" onclick="openRazorpayCheckout()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              Pay {{ format_currency(invoice.total, invoice.currency) }} Securely
+            </button>
+            <div id="rzpSpinner">⏳ Opening Razorpay Checkout...</div>
+            <div class="rzp-powered">Powered by <strong>Razorpay</strong> — UPI, GPay, PhonePe, Net Banking, Cards</div>
 
-            <!-- Waiting state after tapping pay -->
-            <div id="waitingState" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:10px; margin-bottom:10px; text-align:center;">
-              <div style="font-size:12px; font-weight:600; color:#92400E;">⏳ Processing payment in UPI App...</div>
-              <div style="font-size:11px; color:#B45309; margin-top:2px;">Complete payment and return here — status auto-updates to PAID!</div>
+            {% if payment_qr_data %}
+              <div class="rzp-divider"><span>or scan UPI QR</span></div>
+              <div style="display: flex; justify-content: center; margin: 8px 0;">
+                <img src="{{ payment_qr_data }}" alt="UPI QR Code" style="width: 120px; height: 120px; border-radius: var(--radius-sm); border: 1px solid #BBF7D0;">
+              </div>
+              <div style="font-size: 11px; color: #6B7280; margin-bottom: 8px;">Scan with any UPI app — then confirm below</div>
+              <div style="border-top: 1px dashed #86EFAC; padding-top: 10px;">
+                <form action="{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}" method="POST" style="display:flex; gap:6px; flex-direction:column;">
+                  <input type="text" name="utr_number" class="form-control" placeholder="Enter UTR / UPI Reference Number" style="font-size: 11px; padding: 6px 10px; background: #FFFFFF; text-align: center;">
+                  <button type="submit" class="btn btn-sm" style="background:#059669; color:#fff; width:100%; justify-content:center; font-size:12px;">
+                    ✓ Confirm UPI Payment
+                  </button>
+                </form>
+              </div>
+            {% endif %}
+
+          {% elif payment_qr_data %}
+            <!-- Direct UPI QR Fallback Mode (no Razorpay keys configured) -->
+            <div style="font-size: 12px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
+              Scan to Pay via UPI (GPay / PhonePe / Paytm)
+            </div>
+            <div style="display: flex; justify-content: center; margin: 8px 0;">
+              <img src="{{ payment_qr_data }}" alt="UPI QR Code" style="width: 135px; height: 135px; border-radius: var(--radius-sm); border: 1px solid #86EFAC;">
+            </div>
+            {% if upi_uri %}
+              <div style="margin-bottom: 10px;">
+                <a href="{{ upi_uri }}" id="upiPayBtn" class="btn btn-sm"
+                   style="background-color:#059669; color:#FFFFFF; font-weight:600; width:100%; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><path d="M9 12L11 14L15 10"/></svg>
+                  Open UPI App (GPay / PhonePe / Paytm)
+                </a>
+              </div>
+            {% endif %}
+            <div style="margin-top: 10px; border-top: 1px dashed #86EFAC; padding-top: 10px;">
+              <div style="font-size: 11px; color: #166534; font-weight: 600; margin-bottom: 6px;">
+                After paying, submit your UPI reference:
+              </div>
+              <form action="{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}" method="POST" style="display: flex; gap: 6px; flex-direction: column;">
+                <input type="text" name="utr_number" class="form-control" placeholder="UPI Reference / UTR Number" style="font-size: 11px; padding: 6px 10px; background: #FFFFFF; text-align: center;">
+                <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; font-size: 12px; background: #0F172A;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>Confirm Payment</span>
+                </button>
+              </form>
             </div>
           {% endif %}
 
-          <div style="margin-top: 10px; border-top: 1px dashed #86EFAC; padding-top: 10px;">
-            <div style="font-size: 11px; color: #166534; font-weight: 600; margin-bottom: 6px;">
-              Or submit payment reference:
-            </div>
-            <form action="{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}" method="POST" style="display: flex; gap: 6px; flex-direction: column;">
-              <input type="text" name="utr_number" class="form-control" placeholder="UPI Reference / UTR Number (optional)" style="font-size: 11px; padding: 6px 10px; background: #FFFFFF; text-align: center;">
-              <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; font-size: 12px; background: #0F172A;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span>Confirm Payment</span>
-              </button>
-            </form>
-          </div>
         </div>
 
       {% elif invoice.status == 'Paid' %}
         <div id="paidBanner" style="background-color:#ECFDF5; border:1px solid #A7F3D0; border-radius:var(--radius-md); padding:14px; margin-top:16px; text-align:center; color:#065F46; font-weight:600; font-size:13px;">
-          ✓ This invoice is officially SETTLED & PAID in full.
+          ✓ This invoice is officially SETTLED &amp; PAID in full.
         </div>
       {% endif %}
 
@@ -217,54 +294,133 @@
     </div>
   </div>
 
-{% if invoice.status != 'Paid' and upi_uri %}
+{% if invoice.status != 'Paid' %}
 <script>
-  const CONFIRM_URL = "{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}";
-  const upiBtn = document.getElementById('upiPayBtn');
-  const waitingState = document.getElementById('waitingState');
-  let upiLaunched = false;
+  const STATUS_URL = "{{ url_for('verification.check_status', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}";
+  const CREATE_ORDER_URL = "{{ url_for('verification.create_order', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}";
+  const VERIFY_PAYMENT_URL = "{{ url_for('verification.verify_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}";
+  const RAZORPAY_ENABLED = {{ 'true' if is_razorpay_enabled else 'false' }};
+  const INVOICE_AMOUNT = {{ invoice.total }};
+  const INVOICE_CURRENCY = "{{ invoice.currency }}";
+  const INVOICE_NUMBER = "{{ invoice.invoice_number }}";
+  const CLIENT_NAME = "{{ invoice.client_name or '' }}";
+  const CLIENT_EMAIL = "{{ invoice.client_email or '' }}";
+  const CLIENT_PHONE = "{{ invoice.client_phone or '' }}";
+  const RAZORPAY_KEY_ID = "{{ razorpay_key_id or '' }}";
+
   let settled = false;
 
-  if (upiBtn) {
-    upiBtn.addEventListener('click', () => {
-      upiLaunched = true;
-      if (waitingState) waitingState.style.display = 'block';
-    });
+  function showPaidSuccess(paidDate) {
+    settled = true;
+    const paymentSection = document.getElementById('paymentSection');
+    if (paymentSection) {
+      paymentSection.style.background = '#ECFDF5';
+      paymentSection.style.border = '1px solid #A7F3D0';
+      paymentSection.innerHTML = `
+        <div style="text-align:center; padding:16px 0;">
+          <div style="font-size:48px; margin-bottom:10px;">✅</div>
+          <div style="font-size:18px; font-weight:700; color:#065F46; margin-bottom:6px;">Payment Confirmed!</div>
+          <div style="font-size:13px; color:#047857;">Invoice marked as <strong>PAID</strong> on ${paidDate}</div>
+          <div style="margin-top:10px; font-size:11px; color:#6B7280;">Verified by Razorpay. Thank you for your payment!</div>
+        </div>
+      `;
+    }
+    const badge = document.getElementById('statusBadge');
+    if (badge) { badge.textContent = 'Paid'; badge.className = 'status-badge paid'; }
   }
 
-  // Auto-detect when client finishes paying in UPI app and returns to browser
-  document.addEventListener('visibilitychange', () => {
-    if (upiLaunched && document.visibilityState === 'visible' && !settled) {
-      settled = true;
-      fetch(CONFIRM_URL, {
+  {% if is_razorpay_enabled %}
+  async function openRazorpayCheckout() {
+    const btn = document.getElementById('rzpPayBtn');
+    const spinner = document.getElementById('rzpSpinner');
+    if (btn) btn.disabled = true;
+    if (spinner) spinner.style.display = 'block';
+
+    try {
+      const orderRes = await fetch(CREATE_ORDER_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-        body: 'utr_number=AUTO_DETECT_RETURN'
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          const upiSection = document.getElementById('upiPaySection');
-          if (upiSection) {
-            upiSection.innerHTML = `
-              <div style="text-align:center; padding:12px 0;">
-                <div style="font-size:36px; margin-bottom:8px;">✅</div>
-                <div style="font-size:16px; font-weight:700; color:#065F46; margin-bottom:4px;">Payment Confirmed!</div>
-                <div style="font-size:12px; color:#047857;">Invoice marked as <strong>PAID</strong> on ${data.paid_date}</div>
-                <div style="margin-top:8px; font-size:11px; color:#6B7280;">Auto-detected from UPI app return. Thank you!</div>
-              </div>
-            `;
-            upiSection.style.background = '#ECFDF5';
-            upiSection.style.border = '1px solid #A7F3D0';
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const orderData = await orderRes.json();
+
+      if (!orderData.success) {
+        alert('Could not create payment order: ' + orderData.message);
+        if (btn) btn.disabled = false;
+        if (spinner) spinner.style.display = 'none';
+        return;
+      }
+
+      const options = {
+        key: RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Invoice Payment",
+        description: "Invoice " + INVOICE_NUMBER,
+        order_id: orderData.order_id,
+        prefill: {
+          name: CLIENT_NAME,
+          email: CLIENT_EMAIL,
+          contact: CLIENT_PHONE
+        },
+        notes: { invoice_number: INVOICE_NUMBER },
+        theme: { color: "#1D4ED8" },
+        handler: async function(response) {
+          // Payment completed - verify HMAC signature server-side
+          const verifyRes = await fetch(VERIFY_PAYMENT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success) {
+            showPaidSuccess(verifyData.paid_date);
+          } else {
+            alert('Payment verification failed: ' + verifyData.message);
+          }
+        },
+        modal: {
+          ondismiss: function() {
+            if (btn) btn.disabled = false;
+            if (spinner) spinner.style.display = 'none';
           }
         }
+      };
+
+      const rzp = new Razorpay(options);
+      rzp.on('payment.failed', function(response) {
+        alert('Payment failed: ' + response.error.description);
+        if (btn) btn.disabled = false;
+        if (spinner) spinner.style.display = 'none';
+      });
+      if (spinner) spinner.style.display = 'none';
+      rzp.open();
+
+    } catch (err) {
+      console.error('Razorpay error:', err);
+      if (btn) btn.disabled = false;
+      if (spinner) spinner.style.display = 'none';
+      alert('Payment could not be initiated. Please try again.');
+    }
+  }
+  {% endif %}
+
+  // Live poll every 4 seconds — catches webhook-settled payments from other devices
+  function pollStatus() {
+    if (settled) return;
+    fetch(STATUS_URL)
+      .then(r => r.json())
+      .then(data => {
+        if (data.is_paid) showPaidSuccess(data.paid_date);
       })
       .catch(() => {});
-    }
-  });
+  }
+  setInterval(pollStatus, 4000);
 </script>
 {% endif %}
 
 </body>
 </html>
-
