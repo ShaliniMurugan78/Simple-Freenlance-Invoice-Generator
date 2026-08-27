@@ -6,6 +6,10 @@
 {% endblock %}
 
 {% block top_actions %}
+  <a href="{{ url_for('settings.backup_db') }}" class="btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    <span>Backup Database</span>
+  </a>
   <button type="submit" form="profileForm" class="btn btn-primary">Save Changes</button>
 {% endblock %}
 
@@ -143,36 +147,8 @@
     </form>
   </div>
 
-  <!-- Sidebar: Backup, Demo Data & Activity Audit Feed -->
-  <div style="display: flex; flex-direction: column; gap: 20px;">
-    <!-- Demo Data & System Tools Card -->
-    <section class="content-section">
-      <div class="section-header" style="background: #F8FAFC;">
-        <h2 class="section-title" style="display: flex; align-items: center; gap: 8px;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
-          Demo Portfolio Data
-        </h2>
-      </div>
-      <div class="section-body" style="padding: 16px;">
-        <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
-          Pre-populate realistic clients, invoices, expenses, and activity records for portfolio showcase and evaluation.
-        </p>
-        
-        <form method="POST" action="{{ url_for('settings.seed_demo') }}" style="margin-bottom: 8px;">
-          <input type="hidden" name="force" value="1">
-          <button type="submit" class="btn btn-secondary" style="width: 100%; justify-content: center; font-size: 12px;" onclick="return confirm('Reloading demo data will populate sample clients, invoices, and expenses. Continue?')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-            <span>Reset & Load Demo Data</span>
-          </button>
-        </form>
-
-        <a href="{{ url_for('settings.backup_db') }}" class="btn" style="width: 100%; justify-content: center; font-size: 12px; margin-top: 6px;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          <span>Download Database Backup</span>
-        </a>
-      </div>
-    </section>
-
+  <!-- Sidebar: Activity Audit Feed -->
+  <div>
     <!-- Activity Log Card -->
     <section class="content-section">
       <div class="section-header">
