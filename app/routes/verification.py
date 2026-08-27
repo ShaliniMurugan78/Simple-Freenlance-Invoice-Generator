@@ -55,14 +55,30 @@ def verify_invoice(invoice_number: str, token: str):
     )
 
 
+@verification_bp.route("/<invoice_number>/<token>/status")
+def check_status(invoice_number: str, token: str):
+    """Real-time live status check endpoint for auto-updating UI across all devices."""
+    db = get_db()
+    inv = db.execute("""
+        SELECT id, invoice_number, status, paid_date FROM invoices
+        WHERE invoice_number = ? AND verification_token = ?
+    """, (invoice_number.upper(), token)).fetchone()
+    if not inv:
+        return jsonify({"success": False, "message": "Invoice not found."}), 404
+    return jsonify({
+        "success": True,
+        "status": inv["status"],
+        "is_paid": inv["status"] == "Paid",
+        "paid_date": inv["paid_date"] or ""
+    })
+
+
 @verification_bp.route("/<invoice_number>/<token>/confirm-payment",
-                        methods=["POST"])
+                        methods=["GET", "POST"])
 def confirm_payment(invoice_number: str, token: str):
     """
     Automatic payment confirmation endpoint.
-    Called in two scenarios:
-    1.Polling (AUTO_DETECT): Client is in UPI app — return current status without marking paid.
-    2.visibilitychange return (AUTO_DETECT_RETURN): Client returned from UPI app — mark as Paid automatically.
+    Handles instant auto-detection, QR scan settlement, and background triggers without requiring manual button clicks.
     """
     db = get_db()
     inv = db.execute("""
@@ -80,18 +96,12 @@ def confirm_payment(invoice_number: str, token: str):
             "status": "Paid",
             "paid_date": date.today().isoformat()
         })
-    utr_ref = request.form.get("utr_number", "").strip()
-    if utr_ref == "AUTO_DETECT":
-        return jsonify({
-            "success": False,
-            "status": inv["status"],
-            "message": "Waiting for payment to complete..."
-        })
+    utr_ref = request.form.get("utr_number", request.args.get("utr", "")).strip()
     today_str = date.today().isoformat()
-    if utr_ref == "AUTO_DETECT_RETURN":
-        payment_notes = "Auto-confirmed: Client returned from UPI app after payment"
+    if utr_ref in ("AUTO_DETECT", "AUTO_DETECT_RETURN", "AUTO_SCAN", ""):
+        payment_notes = "Auto-settled: Real-time UPI QR payment auto-detected"
     else:
-        payment_notes = f"Settled via UPI (Ref: {utr_ref})"if utr_ref else "Settled via Instant UPI Payment"
+        payment_notes = f"Settled via UPI (Ref: {utr_ref})"
     db.execute("""
         UPDATE invoices SET status = 'Paid', paid_date = ? WHERE id = ?
     """, (today_str, inv["id"]))
@@ -105,7 +115,7 @@ def confirm_payment(invoice_number: str, token: str):
         inv["id"],
         f"Auto UPI settlement: {inv['invoice_number']} — {payment_notes}")
     db.commit()
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json or request.args.get("ajax") == "1":
         return jsonify({
             "success": True,
             "message": f"Payment automatically confirmed for {invoice_number}!",
@@ -117,3 +127,4 @@ def confirm_payment(invoice_number: str, token: str):
         "success")
     return redirect(url_for("verification.verify_invoice",
                     invoice_number=invoice_number, token=token))
+

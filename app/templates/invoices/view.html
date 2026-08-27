@@ -172,6 +172,22 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
+
+  // Real-time zero-click payment listener on invoice view
+  {% if invoice.status != 'Paid' %}
+  const liveStatusUrl = "{{ url_for('verification.check_status', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}";
+  let checkInterval = setInterval(async () => {
+    try {
+      const res = await fetch(liveStatusUrl);
+      const data = await res.json();
+      if (data.success && data.is_paid) {
+        clearInterval(checkInterval);
+        // Instant visual update without requiring user interaction
+        window.location.reload();
+      }
+    } catch (e) {}
+  }, 3000);
+  {% endif %}
 });
 </script>
 {% endblock %}
