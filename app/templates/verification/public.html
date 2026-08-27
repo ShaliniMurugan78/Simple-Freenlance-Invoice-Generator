@@ -181,13 +181,22 @@
               <a href="{{ upi_uri }}" id="upiPayBtn" class="btn btn-sm"
                  style="background-color:#059669; color:#FFFFFF; font-weight:600; width:100%; justify-content:center; text-decoration:none; display:flex; align-items:center; gap:6px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><path d="M9 12L11 14L15 10"/></svg>
-                Tap to Pay via UPI App — Auto-Detects When Done
+                Tap to Pay via UPI App
               </a>
             </div>
           {% endif %}
 
-          <div style="font-size:10px; color:#6B7280; text-align:center;">
-            🔄 Payment is automatically confirmed when you return from your UPI app
+          <div style="margin-top: 12px; border-top: 1px dashed #86EFAC; padding-top: 10px;">
+            <div style="font-size: 11px; color: #166534; font-weight: 600; margin-bottom: 6px;">
+              Scanned and paid with your phone?
+            </div>
+            <form action="{{ url_for('verification.confirm_payment', invoice_number=invoice.invoice_number, token=invoice.verification_token) }}" method="POST" style="display: flex; gap: 6px; flex-direction: column;">
+              <input type="text" name="utr_number" class="form-control" placeholder="UPI Reference / UTR (optional)" style="font-size: 11px; padding: 6px 10px; background: #FFFFFF; text-align: center;">
+              <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; font-size: 12px; background: #0F172A;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Confirm Payment Settlement</span>
+              </button>
+            </form>
           </div>
         </div>
 
