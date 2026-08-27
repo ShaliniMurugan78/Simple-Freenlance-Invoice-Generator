@@ -87,6 +87,23 @@
       <p style="font-size: 12px; color: #64748B; margin: 0;">Access client ledgers, real-time invoicing & business insights.</p>
     </div>
 
+    <!-- Demo Credentials Quick Fill Banner -->
+    <div class="demo-creds-banner">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; display: flex; align-items: center; gap: 5px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          Demo Portfolio Access
+        </div>
+        <button type="button" id="fillDemoBtn" class="btn btn-sm" style="font-size: 11px; padding: 3px 8px; background: #2563EB; color: #FFF; border: none; border-radius: 4px; cursor: pointer;">
+          Auto Fill
+        </button>
+      </div>
+      <div style="font-size: 11px; color: #64748B; line-height: 1.5;">
+        <div><strong>Email:</strong> <code style="color: #0F172A; font-family: var(--font-mono); background: #E2E8F0; padding: 1px 4px; border-radius: 3px;">shalinimurugan1905@gmail.com</code></div>
+        <div style="margin-top: 2px;"><strong>Password:</strong> <code style="color: #0F172A; font-family: var(--font-mono); background: #E2E8F0; padding: 1px 4px; border-radius: 3px;">admin123</code></div>
+      </div>
+    </div>
+
     <!-- Login Form -->
     <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}" id="loginForm">
       <div class="form-group" style="margin-bottom: 14px;">
@@ -127,8 +144,18 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  const emailInput = document.getElementById("loginEmail");
   const passInput = document.getElementById("loginPassword");
   const toggleBtn = document.getElementById("togglePasswordBtn");
+  const fillDemoBtn = document.getElementById("fillDemoBtn");
+
+  if (fillDemoBtn) {
+    fillDemoBtn.addEventListener("click", () => {
+      emailInput.value = "shalinimurugan1905@gmail.com";
+      passInput.value = "admin123";
+      passInput.focus();
+    });
+  }
 
   if (toggleBtn) {
     toggleBtn.addEventListener("click", () => {

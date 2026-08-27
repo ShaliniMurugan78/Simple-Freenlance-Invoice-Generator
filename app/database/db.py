@@ -87,6 +87,11 @@ def init_db(app=None):
             )
         """)
         conn.commit()
+    if not (app and app.config.get("TESTING")):
+        cur.execute("SELECT COUNT(*) FROM clients")
+        if cur.fetchone()[0] == 0:
+            conn.commit()
+            seed_demo_data(force=False, conn=conn)
     conn.close()
 
 
@@ -117,13 +122,14 @@ def create_backup() -> Path:
     return backup_file
 
 
-def seed_demo_data(force=False):
+def seed_demo_data(force=False, conn=None):
     """Seeds rich, realistic demo clients, invoices, expenses, and logs for portfolio presentation."""
-    db = get_db()
+    db = conn if conn is not None else get_db()
     if not force:
-        existing_clients = db.execute(
-            "SELECT COUNT(*) as count FROM clients").fetchone()["count"]
-        if existing_clients > 0:
+        cur = db.cursor() if hasattr(db, "cursor") else db
+        res = cur.execute("SELECT COUNT(*) as count FROM clients").fetchone()
+        count = res[0] if isinstance(res, tuple) else res["count"]
+        if count > 0:
             return False, "Demo data already exists or data is not empty."
     if force:
         db.execute("DELETE FROM invoice_items")

@@ -103,9 +103,10 @@ def backup_db():
 @settings_bp.route("/seed-demo", methods=["POST"])
 def seed_demo():
     """Seeds rich demo data for interview demonstrations."""
-    success, msg = seed_demo_data()
+    force = request.form.get("force") == "1" or request.args.get("force") == "1"
+    success, msg = seed_demo_data(force=force)
     if success:
         flash(msg, "success")
     else:
-        flash(msg, "error")
-    return redirect(url_for("main.home"))
+        flash(msg, "info" if "already exists" in msg.lower() else "error")
+    return redirect(url_for("settings.index"))
